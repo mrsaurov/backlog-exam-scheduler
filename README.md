@@ -1,64 +1,317 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# 🎓 Backlog Exam Scheduler
 
-<p align="center">
-<a href="https://travis-ci.org/laravel/framework"><img src="https://travis-ci.org/laravel/framework.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A comprehensive web application built with Laravel for managing backlog exam registrations and scheduling for educational institutions. The system allows students to register for up to 5 backlog courses and uses graph coloring algorithms to automatically schedule conflict-free exam timetables.
 
-## About Laravel
+![Laravel](https://img.shields.io/badge/Laravel-9.x-red?style=flat-square&logo=laravel)
+![PHP](https://img.shields.io/badge/PHP-8.0+-blue?style=flat-square&logo=php)
+![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey?style=flat-square&logo=sqlite)
+![Bootstrap](https://img.shields.io/badge/UI-Bootstrap_4-purple?style=flat-square&logo=bootstrap)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## 📋 Table of Contents
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- [Features](#-features)
+- [Installation](#-installation)
+- [Configuration](#-configuration)
+- [Usage](#-usage)
+- [System Architecture](#-system-architecture)
+- [Graph Coloring Algorithm](#-graph-coloring-algorithm)
+- [API Endpoints](#-api-endpoints)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## ✨ Features
 
-## Learning Laravel
+### 🎯 Student Features
+- **Multi-Course Registration**: Register for up to 5 backlog courses per exam session
+- **Duplicate Prevention**: Client-side and server-side validation prevents selecting the same course multiple times
+- **PDF Generation**: Download registration confirmation as PDF
+- **Real-time Validation**: Dynamic form validation with instant feedback
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 👨‍💼 Admin Features
+- **Student Management**: View, edit, and delete student registrations
+- **Verification System**: Mark student registrations as verified/unverified
+- **Exam Creation**: Create and manage available exams
+- **Automated Scheduling**: Graph coloring algorithm for conflict-free exam scheduling
+- **Enhanced UI/UX**: Modern, responsive interface with optimized animations
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains over 2000 video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### 🔧 Technical Features
+- **Graph Coloring Algorithm**: Intelligent scheduling to prevent exam time conflicts
+- **Dynamic Course Selection**: Prevents duplicate course selection across all forms
+- **Responsive Design**: Mobile-friendly interface built with Bootstrap 4
+- **Flash Notifications**: User feedback with customizable animation durations
+- **Database Migrations**: Version-controlled database schema changes
 
-## Laravel Sponsors
+## 🚀 Installation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the Laravel [Patreon page](https://patreon.com/taylorotwell).
+### Prerequisites
+- PHP 8.0 or higher
+- Composer
+- Node.js & NPM (for asset compilation)
+- SQLite (default) or MySQL/PostgreSQL
 
-### Premium Partners
+### Step 1: Clone the Repository
+```bash
+git clone https://github.com/your-username/backlog-exam-scheduler.git
+cd backlog-exam-scheduler
+```
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Cubet Techno Labs](https://cubettech.com)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[Many](https://www.many.co.uk)**
-- **[Webdock, Fast VPS Hosting](https://www.webdock.io/en)**
-- **[DevSquad](https://devsquad.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[OP.GG](https://op.gg)**
-- **[WebReinvent](https://webreinvent.com/?utm_source=laravel&utm_medium=github&utm_campaign=patreon-sponsors)**
-- **[Lendio](https://lendio.com)**
+### Step 2: Install Dependencies
+```bash
+# Install PHP dependencies
+composer install
 
-## Contributing
+# Install JavaScript dependencies
+npm install
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Step 3: Environment Configuration
+```bash
+# Copy environment file
+cp .env.example .env
 
-## Code of Conduct
+# Generate application key
+php artisan key:generate
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Step 4: Database Setup
+```bash
+# Create SQLite database (default)
+touch database/database.sqlite
 
-## Security Vulnerabilities
+# Run migrations
+php artisan migrate
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+# Seed the database (optional)
+php artisan db:seed
+```
 
-## License
+### Step 5: Asset Compilation
+```bash
+# Compile assets for development
+npm run dev
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+# Or for production
+npm run prod
+```
+
+### Step 6: Start the Application
+```bash
+# Start development server
+php artisan serve
+
+# Application will be available at http://localhost:8000
+```
+
+## ⚙️ Configuration
+
+### Database Configuration
+Edit `.env` file for database settings:
+
+```env
+# SQLite (Default)
+DB_CONNECTION=sqlite
+DB_DATABASE=/absolute/path/to/database/database.sqlite
+
+# MySQL Alternative
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=backlog_scheduler
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+```
+
+### Mail Configuration
+For PDF email notifications:
+```env
+MAIL_MAILER=smtp
+MAIL_HOST=your_smtp_host
+MAIL_PORT=587
+MAIL_USERNAME=your_email
+MAIL_PASSWORD=your_password
+```
+
+## 📖 Usage
+
+### For Students
+
+1. **Registration**:
+   - Navigate to the home page
+   - Fill in personal details (Name, Roll, Registration)
+   - Select up to 5 courses (duplicate prevention enabled)
+   - Submit registration
+
+2. **Download Confirmation**:
+   - After successful registration, download PDF confirmation
+   - PDF contains all registered course details
+
+### For Administrators
+
+1. **Login**:
+   - Access admin panel via `/login`
+   - Default credentials can be set up via seeders
+
+2. **Manage Exams**:
+   - Create new exam sessions
+   - Set exam dates and details
+
+3. **Student Management**:
+   - View all registered students
+   - Edit student registrations via modal interface
+   - Delete registrations with confirmation
+   - Mark students as verified/unverified
+
+4. **Schedule Generation**:
+   - Use graph coloring algorithm to generate conflict-free schedules
+   - View and export exam timetables
+
+## 🏗️ System Architecture
+
+### Database Schema
+
+#### Tables:
+- **users**: Admin authentication
+- **available_exams**: Exam session management
+- **courses**: Course catalog
+- **registered_students**: Student registrations (supports 5 courses)
+- **course_exam_mappings**: Course-exam relationships
+
+### Key Models:
+- `User`: Admin authentication
+- `AvailableExam`: Exam sessions
+- `Course`: Course information
+- `RegisteredStudent`: Student registrations
+- `CourseExamMapping`: Course-exam relationships
+
+### Controllers:
+- `HomeController`: Student registration and PDF generation
+- `AdminController`: Admin panel functionality
+- `AuthController`: Authentication management
+
+## 🎨 Graph Coloring Algorithm
+
+The system uses a graph coloring algorithm to schedule exams without conflicts:
+
+### How it Works:
+1. **Graph Construction**: Create conflict graph where courses taken by the same student are connected
+2. **Vertex Ordering**: Sort courses by conflict degree (highest first)
+3. **Coloring**: Assign time slots ensuring no adjacent courses have the same color
+4. **Scheduling**: Map colors to actual time slots
+
+### Example:
+```
+Student A: [Course1, Course2, Course3]
+Student B: [Course1, Course4]
+Student C: [Course2, Course4]
+
+Conflict Graph:
+Course1 ←→ Course2 ←→ Course3
+   ↓           ↓
+Course4 ←→ ←→ ←→
+
+Result:
+Course1: Time Slot 1
+Course2: Time Slot 2  
+Course3: Time Slot 1 (no conflict with Course1)
+Course4: Time Slot 3
+```
+
+### Time Slots:
+- Slot 1: 9:00 AM - 12:00 PM (Day 1)
+- Slot 2: 1:00 PM - 4:00 PM (Day 1)
+- Slot 3: 9:00 AM - 12:00 PM (Day 2)
+- And so on...
+
+## 🔗 API Endpoints
+
+### Student Registration
+```http
+POST /register
+Content-Type: application/x-www-form-urlencoded
+
+name=John+Doe&roll=123&registration=2020&course1=1&course2=2
+```
+
+### Admin Operations
+```http
+# View students
+GET /students/{exam_id}
+
+# Delete student
+DELETE /students/delete
+Content-Type: application/x-www-form-urlencoded
+
+# Edit student
+PUT /students/edit
+Content-Type: application/x-www-form-urlencoded
+```
+
+## 🎨 UI/UX Features
+
+- **Responsive Design**: Mobile-first approach with Bootstrap 4
+- **Fast Animations**: Reduced modal (0.15s) and notification (0.3s) durations
+- **Dynamic Forms**: Real-time duplicate course prevention
+- **Confirmation Dialogs**: User-friendly delete confirmations
+- **Flash Messages**: Success/error notifications with auto-dismiss
+
+## 🧪 Testing
+
+Run the test suite:
+```bash
+# Run all tests
+php artisan test
+
+# Run specific test file
+php artisan test tests/Feature/StudentRegistrationTest.php
+
+# Run with coverage
+php artisan test --coverage
+```
+
+## 📦 Dependencies
+
+### PHP Packages:
+- `laravel/framework`: Core framework
+- `barryvdh/laravel-dompdf`: PDF generation
+- `php-flasher/flasher-laravel`: Flash notifications
+
+### JavaScript Packages:
+- `bootstrap`: UI framework
+- `jquery`: DOM manipulation
+- `fancyTable`: Enhanced table functionality
+
+## 🤝 Contributing
+
+We welcome contributions! Please follow these steps:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
+
+### Development Guidelines:
+- Follow PSR-12 coding standards
+- Write tests for new features
+- Update documentation for API changes
+- Use meaningful commit messages
+
+## 🐛 Known Issues
+
+- Graph coloring algorithm may require optimization for very large datasets
+- PDF generation may timeout for bulk operations
+- Modal animations may vary across browsers
+
+## 📄 License
+
+This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+
+## 👥 Credits
+
+- Built with [Laravel Framework](https://laravel.com)
+- PDF generation by [dompdf](https://github.com/dompdf/dompdf)
+- UI components by [Bootstrap](https://getbootstrap.com)
+
+---
+
+**For support or questions, please open an issue on GitHub.**
