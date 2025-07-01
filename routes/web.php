@@ -29,6 +29,8 @@ Route::get('/courses/{courseid}/{examid}',[AdminController::class, 'course'])->m
 Route::get('/schedule/{id}',[AdminController::class, 'schedule'])->middleware('adminlogin');
 Route::get('/students/{id}',[AdminController::class, 'students'])->middleware('adminlogin');
 Route::post('/students',[AdminController::class, 'studentsupdate'])->middleware('adminlogin');
+Route::delete('/students/delete',[AdminController::class, 'studentdelete'])->middleware('adminlogin');
+Route::put('/students/edit',[AdminController::class, 'studentedit'])->middleware('adminlogin');
 Route::post('/exams',[HomeController::class, 'addorupdateexams'])->middleware('adminlogin');
 Route::get('/exams/{id}',[HomeController::class, 'exams'])->middleware('adminlogin');
 Route::get('/admin',[HomeController::class, 'admin'])->middleware('adminlogin');

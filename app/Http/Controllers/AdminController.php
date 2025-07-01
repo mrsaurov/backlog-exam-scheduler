@@ -8,6 +8,7 @@ use App\Models\RegisteredStudent;
 use Hamcrest\Core\IsTypeOf;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
+use Exception;
 
 class AdminController extends Controller
 {
@@ -17,9 +18,10 @@ class AdminController extends Controller
         $students = RegisteredStudent::all()->where('examid','=',$id)->toArray();
         $exam = AvailableExam::all()->where('id','=',$id)->first();
 
-        $courses = Course::all()->toArray();
+        $courses = Course::all();
+        $coursesArray = $courses->toArray();
         $coursemap = [];
-        foreach($courses as $crs)
+        foreach($coursesArray as $crs)
         {
             $coursemap[$crs['id']] = $crs['course_code'];
         }
@@ -34,11 +36,19 @@ class AdminController extends Controller
 
             if($std['course3'] && $std['course3']>0) 
                 $std['course3'] = $coursemap[$std['course3']];
+
+            if($std['course4'] && $std['course4']>0) 
+                $std['course4'] = $coursemap[$std['course4']];
+
+            if($std['course5'] && $std['course5']>0) 
+                $std['course5'] = $coursemap[$std['course5']];
+            
             array_push($stds,$std);
         }
         return view('student')->with([
                                         'students'=>$stds, 
-                                        'exam'=>$exam
+                                        'exam'=>$exam,
+                                        'courses'=>$courses
                                     ]);
     }
     public function studentsupdate(Request $req)
@@ -50,6 +60,26 @@ class AdminController extends Controller
         RegisteredStudent::wherein('id',$std)->update(array('verified'=>true));
         flash()->addSuccess('Data has been saved successfully!');
 
+        return redirect('/students/'.$examid);
+    }
+    
+    public function studentdelete(Request $req)
+    {
+        $studentId = $req->input('student_id');
+        $examid = $req->input('examid');
+        
+        try {
+            $student = RegisteredStudent::find($studentId);
+            if ($student) {
+                $student->delete();
+                flash()->addSuccess('Student registration deleted successfully!');
+            } else {
+                flash()->addError('Student not found!');
+            }
+        } catch (Exception $e) {
+            flash()->addError('Error deleting student registration!');
+        }
+        
         return redirect('/students/'.$examid);
     }
     public function schedule($examid)
@@ -67,6 +97,10 @@ class AdminController extends Controller
                 array_push($vertex, $std['course2']);
             if($std['course3'])
                 array_push($vertex, $std['course3']);
+            if($std['course4'])
+                array_push($vertex, $std['course4']);
+            if($std['course5'])
+                array_push($vertex, $std['course5']);
         }
         $vertexcount = array_count_values($vertex);
         $vertex = array_unique($vertex);
@@ -84,6 +118,10 @@ class AdminController extends Controller
                 array_push($items, $std['course2']);
             if($std['course3'])
                 array_push($items, $std['course3']);
+            if($std['course4'])
+                array_push($items, $std['course4']);
+            if($std['course5'])
+                array_push($items, $std['course5']);
             foreach($items as $item)
             {
                 foreach($items as $it)
@@ -214,5 +252,76 @@ class AdminController extends Controller
                 flash()->addError('Delete course operation failed');
             return redirect('/exams/'.$examid);
         }
+    }
+    public function studentedit(Request $req)
+    {
+        $studentId = $req->input('student_id');
+        $examid = $req->input('examid');
+        $name = $req->input('name');
+        $roll = $req->input('roll');
+        $registration = $req->input('registration');
+        $course1 = $req->input('course1');
+        $course2 = $req->input('course2') ?: null;
+        $course3 = $req->input('course3') ?: null;
+        $course4 = $req->input('course4') ?: null;
+        $course5 = $req->input('course5') ?: null;
+        $verified = $req->input('verified') == '1';
+        
+        // Validate required fields
+        $req->validate([
+            'name' => 'required|string|max:255',
+            'roll' => 'required|string|max:50',
+            'registration' => 'required|string|max:50',
+            'course1' => 'required|integer|min:1'
+        ]);
+        
+        // Check for duplicate courses
+        $courses = array_filter([$course1, $course2, $course3, $course4, $course5]);
+        if (count($courses) !== count(array_unique($courses))) {
+            flash()->addError('You cannot select the same course multiple times!');
+            return redirect('/students/'.$examid);
+        }
+        
+        // Check if roll or registration number already exists for other students in the same exam
+        $existingStudent = RegisteredStudent::where('examid', $examid)
+            ->where('id', '!=', $studentId)
+            ->where(function($query) use ($roll, $registration) {
+                $query->where('roll', $roll)
+                      ->orWhere('registration', $registration);
+            })
+            ->first();
+            
+        if ($existingStudent) {
+            if ($existingStudent->roll == $roll) {
+                flash()->addError('Roll number already exists for another student in this exam!');
+            } else {
+                flash()->addError('Registration number already exists for another student in this exam!');
+            }
+            return redirect('/students/'.$examid);
+        }
+        
+        try {
+            $student = RegisteredStudent::find($studentId);
+            if ($student) {
+                $student->update([
+                    'name' => $name,
+                    'roll' => $roll,
+                    'registration' => $registration,
+                    'course1' => $course1,
+                    'course2' => $course2 == 0 ? null : $course2,
+                    'course3' => $course3 == 0 ? null : $course3,
+                    'course4' => $course4 == 0 ? null : $course4,
+                    'course5' => $course5 == 0 ? null : $course5,
+                    'verified' => $verified
+                ]);
+                flash()->addSuccess('Student registration updated successfully!');
+            } else {
+                flash()->addError('Student not found!');
+            }
+        } catch (Exception $e) {
+            flash()->addError('Error updating student registration!');
+        }
+        
+        return redirect('/students/'.$examid);
     }
 }

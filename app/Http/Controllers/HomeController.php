@@ -51,6 +51,22 @@ class HomeController extends Controller
         $course1 = $request->input('course1');
         $course2 = $request->input('course2');
         $course3 = $request->input('course3');
+        $course4 = $request->input('course4');
+        $course5 = $request->input('course5');
+        
+        // Check for duplicate course selections
+        $selectedCourses = [];
+        $courses = [$course1, $course2, $course3, $course4, $course5];
+        
+        foreach($courses as $course) {
+            if($course && $course > 0) {
+                if(in_array($course, $selectedCourses)) {
+                    return redirect()->back()->withErrors(['error' => 'You cannot select the same course multiple times. Please choose different courses.'])->withInput();
+                }
+                $selectedCourses[] = $course;
+            }
+        }
+        
         if($course1 && $course1 > 0 )
         {
             $data["course1"] = $course1;
@@ -64,6 +80,16 @@ class HomeController extends Controller
         if($course3 && $course3 > 0 )
         {
             $data["course3"] = $course3;
+        }    
+
+        if($course4 && $course4 > 0 )
+        {
+            $data["course4"] = $course4;
+        }    
+
+        if($course5 && $course5 > 0 )
+        {
+            $data["course5"] = $course5;
         }    
         $std = RegisteredStudent::all()->where('examid','=',$examid)->where('roll','=',$roll)->first();
         if($std) {
@@ -79,11 +105,13 @@ class HomeController extends Controller
     {
         $exam = AvailableExam::all()->where('id','=',$examid)->first();
         $student= RegisteredStudent::all()->where("examid",'=',$examid)->where('roll','=',$roll)->first()->toArray();
-        $c = [
+        $c = array_filter([
             $student['course1'],
             $student['course2'],
-            $student['course3']
-        ];
+            $student['course3'],
+            $student['course4'],
+            $student['course5']
+        ]);
         $courses = Course::all()->whereIn('id',$c);
         $pdf = Pdf::loadView('application', ['exam'=>$exam,
                                             'student'=>$student,
