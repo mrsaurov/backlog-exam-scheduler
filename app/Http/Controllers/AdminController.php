@@ -270,8 +270,8 @@ class AdminController extends Controller
         // Validate required fields
         $req->validate([
             'name' => 'required|string|max:255',
-            'roll' => 'required|string|max:50',
-            'registration' => 'required|string|max:50',
+            'roll' => 'required|integer|min:1',
+            'registration' => 'required|integer|min:1',
             'course1' => 'required|integer|min:1'
         ]);
         

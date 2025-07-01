@@ -15,7 +15,6 @@ A comprehensive web application built with Laravel for managing backlog exam reg
 - [Usage](#-usage)
 - [System Architecture](#-system-architecture)
 - [Graph Coloring Algorithm](#-graph-coloring-algorithm)
-- [API Endpoints](#-api-endpoints)
 - [Contributing](#-contributing)
 - [License](#-license)
 
@@ -121,16 +120,6 @@ DB_USERNAME=your_username
 DB_PASSWORD=your_password
 ```
 
-### Mail Configuration
-For PDF email notifications:
-```env
-MAIL_MAILER=smtp
-MAIL_HOST=your_smtp_host
-MAIL_PORT=587
-MAIL_USERNAME=your_email
-MAIL_PASSWORD=your_password
-```
-
 ## 📖 Usage
 
 ### For Students
@@ -222,37 +211,6 @@ Course4: Time Slot 3
 - Slot 3: 9:00 AM - 12:00 PM (Day 2)
 - And so on...
 
-## 🔗 API Endpoints
-
-### Student Registration
-```http
-POST /register
-Content-Type: application/x-www-form-urlencoded
-
-name=John+Doe&roll=123&registration=2020&course1=1&course2=2
-```
-
-### Admin Operations
-```http
-# View students
-GET /students/{exam_id}
-
-# Delete student
-DELETE /students/delete
-Content-Type: application/x-www-form-urlencoded
-
-# Edit student
-PUT /students/edit
-Content-Type: application/x-www-form-urlencoded
-```
-
-## 🎨 UI/UX Features
-
-- **Responsive Design**: Mobile-first approach with Bootstrap 4
-- **Fast Animations**: Reduced modal (0.15s) and notification (0.3s) durations
-- **Dynamic Forms**: Real-time duplicate course prevention
-- **Confirmation Dialogs**: User-friendly delete confirmations
-- **Flash Messages**: Success/error notifications with auto-dismiss
 
 ## 🧪 Testing
 

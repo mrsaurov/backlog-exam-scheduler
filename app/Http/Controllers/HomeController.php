@@ -34,12 +34,19 @@ class HomeController extends Controller
     }
     public function registerstudent(Request $request)
     {
+        // Validate student input
+        $request->validate([
+            'name' => 'required|string|max:250',
+            'roll' => 'required|integer|min:1',
+            'registration' => 'required|integer|min:1',
+            'examid' => 'required|integer|exists:available_exams,id',
+            'course1' => 'required|integer|min:1'
+        ]);
 
         $examid = $request->input('examid');
         $name = $request->input('name');
         $roll = $request->input('roll');
         $reg = $request->input('registration');
-
 
         $data = [
             'examid'=>$examid,

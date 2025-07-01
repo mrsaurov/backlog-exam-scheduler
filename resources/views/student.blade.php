@@ -142,14 +142,14 @@
                         <div class="col-md-6">
                             <div class="form-group">
                                 <label for="editStudentRoll">Roll:</label>
-                                <input type="text" class="form-control" id="editStudentRoll" name="roll" required>
+                                <input type="number" class="form-control" id="editStudentRoll" name="roll" min="1" required>
                             </div>
                         </div>
                     </div>
                     
                     <div class="form-group">
                         <label for="editStudentRegistration">Registration:</label>
-                        <input type="text" class="form-control" id="editStudentRegistration" name="registration" required>
+                        <input type="number" class="form-control" id="editStudentRegistration" name="registration" min="1" required>
                     </div>
                     
                     <div class="row">
@@ -329,6 +329,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('editStudentForm').addEventListener('submit', function(e) {
         const selectedCourses = [];
         let duplicateFound = false;
+        
+        // Validate roll and registration numbers
+        const rollInput = document.getElementById('editStudentRoll');
+        const registrationInput = document.getElementById('editStudentRegistration');
+        
+        const rollValue = parseInt(rollInput.value);
+        const registrationValue = parseInt(registrationInput.value);
+        
+        if (!rollValue || rollValue < 1) {
+            e.preventDefault();
+            alert('Roll number must be a positive integer.');
+            rollInput.focus();
+            return false;
+        }
+        
+        if (!registrationValue || registrationValue < 1) {
+            e.preventDefault();
+            alert('Registration number must be a positive integer.');
+            registrationInput.focus();
+            return false;
+        }
         
         editCourseSelects.forEach(function(selectId) {
             const select = document.getElementById(selectId);

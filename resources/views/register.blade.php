@@ -25,7 +25,7 @@
         </div>
         <div class="form-group">
             <label for="roll">Roll:</label>
-            <input type="text" class="form-control" name="roll" id="roll" placeholder="Enter your roll" value="{{ old('roll') }}" required>
+            <input type="number" class="form-control" name="roll" id="roll" placeholder="Enter your roll number" value="{{ old('roll') }}" min="1" required>
         </div>
         <!-- <div class="form-group form-check">
             <input type="checkbox" class="form-check-input" id="exampleCheck1">
@@ -33,7 +33,7 @@
         </div> -->
         <div class="form-group">
             <label for="registration">Registration no:</label>
-            <input type="text" class="form-control" name="registration" id="registration" placeholder="Enter your registration" value="{{ old('registration') }}" required>
+            <input type="number" class="form-control" name="registration" id="registration" placeholder="Enter your registration number" value="{{ old('registration') }}" min="1" required>
         </div>
         <div class="form-group">
             <label for="course1">Course 1:</label>
@@ -138,6 +138,27 @@ document.addEventListener('DOMContentLoaded', function() {
     document.querySelector('form').addEventListener('submit', function(e) {
         const selectedCourses = [];
         let duplicateFound = false;
+        
+        // Validate roll and registration numbers
+        const rollInput = document.getElementById('roll');
+        const registrationInput = document.getElementById('registration');
+        
+        const rollValue = parseInt(rollInput.value);
+        const registrationValue = parseInt(registrationInput.value);
+        
+        if (!rollValue || rollValue < 1) {
+            e.preventDefault();
+            alert('Roll number must be a positive integer.');
+            rollInput.focus();
+            return false;
+        }
+        
+        if (!registrationValue || registrationValue < 1) {
+            e.preventDefault();
+            alert('Registration number must be a positive integer.');
+            registrationInput.focus();
+            return false;
+        }
         
         courseSelects.forEach(function(selectId) {
             const select = document.getElementById(selectId);
