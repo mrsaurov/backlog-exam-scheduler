@@ -89,6 +89,8 @@ class AdminController extends Controller
         $edge = (object)[];
         $result = (object)[];
         $vertex = [];
+        $courseStudents = []; // Array to store roll numbers for each course
+        
         foreach($allstd as $std)
         {
             if($std['course1'])
@@ -104,6 +106,38 @@ class AdminController extends Controller
         }
         $vertexcount = array_count_values($vertex);
         $vertex = array_unique($vertex);
+        
+        // Initialize courseStudents array for each course
+        foreach($vertex as $v)
+        {
+            $courseStudents[$v] = [];
+        }
+        
+        // Collect roll numbers for each course
+        foreach($allstd as $std)
+        {
+            $studentCourses = [];
+            if($std['course1']) $studentCourses[] = $std['course1'];
+            if($std['course2']) $studentCourses[] = $std['course2'];
+            if($std['course3']) $studentCourses[] = $std['course3'];
+            if($std['course4']) $studentCourses[] = $std['course4'];
+            if($std['course5']) $studentCourses[] = $std['course5'];
+            
+            foreach($studentCourses as $courseId)
+            {
+                if(!in_array($std['roll'], $courseStudents[$courseId]))
+                {
+                    $courseStudents[$courseId][] = $std['roll'];
+                }
+            }
+        }
+        
+        // Sort roll numbers in ascending order for each course
+        foreach($courseStudents as $courseId => $rolls)
+        {
+            sort($courseStudents[$courseId]);
+        }
+        
         foreach($vertex as $v)
         {
             $edge->$v = [];
@@ -179,7 +213,8 @@ class AdminController extends Controller
             'vertex'=>$vertex,
             'vertexcount'=>$vertexcount,
             'result'=>$ret,
-            'coursemap'=>$coursemap
+            'coursemap'=>$coursemap,
+            'courseStudents'=>$courseStudents
         ]);
     }
     public function course($courseid, $examid)

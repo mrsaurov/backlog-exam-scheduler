@@ -37,7 +37,7 @@
         <div>
             <p><b>Date:</b> {{date('d-m-Y')}}</p>
             <p>To<br>
-            Departmental head<br>
+            Head<br>
             Department of {{$exam->department}}<br>
             Rajshahi University of Engineering &amp; Technology</p>
             <p><b>Medium:</b>&nbsp;Course advisor, {{$exam->series}} series, Department of {{$exam->department}}, RUET.</p>

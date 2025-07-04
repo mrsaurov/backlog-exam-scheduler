@@ -10,12 +10,18 @@
         <thead>
             <td>Course</td>
             <td>No. of Student(s)</td>
+            <td>Student Rolls (Ascending Order)</td>
         </thead>
         <tbody>
             @foreach($vertexcount as $v=>$count)
                 <tr>
                     <td>{{$coursemap[$v]}}</td>
                     <td>{{$count}}</td>
+                    <td>
+                        @if(isset($courseStudents[$v]))
+                            {{ implode(', ', $courseStudents[$v]) }}
+                        @endif
+                    </td>
                 </tr>
             @endforeach
         </tbody>
