@@ -13,9 +13,20 @@ use Exception;
 class AdminController extends Controller
 {
     //
-    public function students($id)
+    public function students($id, Request $request)
     {
-        $students = RegisteredStudent::all()->where('examid','=',$id)->toArray();
+        // Get sorting parameter from request
+        $sortBy = $request->get('sort', 'default');
+        
+        $students = RegisteredStudent::all()->where('examid','=',$id);
+        
+        // Apply sorting based on the parameter
+        if ($sortBy === 'roll') {
+            $students = $students->sortBy('roll');
+        }
+        // For default order, keep the original order (no additional sorting needed)
+        
+        $students = $students->toArray();
         $exam = AvailableExam::all()->where('id','=',$id)->first();
 
         $courses = Course::all();
@@ -48,7 +59,8 @@ class AdminController extends Controller
         return view('student')->with([
                                         'students'=>$stds, 
                                         'exam'=>$exam,
-                                        'courses'=>$courses
+                                        'courses'=>$courses,
+                                        'currentSort'=>$sortBy
                                     ]);
     }
     public function studentsupdate(Request $req)

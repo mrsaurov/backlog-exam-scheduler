@@ -52,15 +52,57 @@
     line-height: 1.5;
     border-radius: 0.2rem;
 }
+
+.sorting-controls {
+    display: flex;
+    align-items: center;
+}
+
+.sorting-controls label {
+    margin-bottom: 0;
+    font-weight: 500;
+}
+
+.table th:first-child,
+.table td:first-child {
+    width: 60px;
+    text-align: center;
+}
+
+@media (max-width: 768px) {
+    .mb-3.d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+    }
+    
+    .sorting-controls {
+        margin-top: 10px;
+    }
+}
 </style>
 
 <form action="/students" method="POST">
     @csrf
     <input type="hidden" name="examid" value="{{$exam->id}}"/>
-<label for="studentTable">Students that has registered for the examination:</label>
+
+<!-- Sorting Controls -->
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <label for="studentTable">Students that has registered for the examination:</label>
+    <div class="sorting-controls">
+        <label class="mr-2">Sort by:</label>
+        <a href="/students/{{$exam->id}}" class="btn btn-sm {{(!isset($currentSort) || $currentSort === 'default') ? 'btn-primary' : 'btn-outline-primary'}} mr-1">
+            Default Order
+        </a>
+        <a href="/students/{{$exam->id}}?sort=roll" class="btn btn-sm {{(isset($currentSort) && $currentSort === 'roll') ? 'btn-primary' : 'btn-outline-primary'}}">
+            Roll Number
+        </a>
+    </div>
+</div>
+
 <table id="studentTable" class="table">
     <thead>
         <tr>
+            <th>Sl. No.</th>
             <th>Roll</th>
             <th>Name</th>
             <th>Registration</th>
@@ -76,6 +118,7 @@
     <tbody>
         @foreach($students as $student)
             <tr>
+                <td class="text-center">{{$loop->iteration}}</td>
                 <td>{{$student['roll']}}</td>
                 <td>{{$student['name']}}</td>
                 <td>{{$student['registration']}}</td>

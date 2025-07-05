@@ -5,7 +5,7 @@
 
 @section('content')
     
-    @if(count($exams) > 0) 
+    @if($exams && $exams->count() > 0) 
     @foreach($exams as $exam)
     <div class="card">
         <h5 class="card-header">{{$exam->exam_name}}</h5>

@@ -139,7 +139,7 @@ class HomeController extends Controller
     }
     public function admin()
     {
-        $exams = AvailableExam::orderBy('deadline', 'desc')->take(10);
+        $exams = AvailableExam::orderBy('deadline', 'desc')->take(10)->get();
         return view('admin',['exams'=>$exams]);
     }
     public function logout(Request $data)
