@@ -230,9 +230,304 @@ class AdminController extends Controller
             'vertexcount'=>$vertexcount,
             'result'=>$ret,
             'coursemap'=>$coursemap,
-            'courseStudents'=>$courseStudents
+            'courseStudents'=>$courseStudents,
+            'examid'=>$examid
         ]);
     }
+    
+    public function exportCoursesCSV($examid)
+    {
+        $courses = RegisteredStudent::all()->where('examid','=',$examid)->where('verified','=', true);
+        $allstd = $courses->toArray();
+        $vertex = [];
+        $courseStudents = [];
+        
+        foreach($allstd as $std)
+        {
+            if($std['course1'])
+                array_push($vertex, $std['course1']);
+            if($std['course2'])
+                array_push($vertex, $std['course2']);
+            if($std['course3'])
+                array_push($vertex, $std['course3']);
+            if($std['course4'])
+                array_push($vertex, $std['course4']);
+            if($std['course5'])
+                array_push($vertex, $std['course5']);
+        }
+        $vertexcount = array_count_values($vertex);
+        $vertex = array_unique($vertex);
+        
+        // Initialize courseStudents array for each course
+        foreach($vertex as $v)
+        {
+            $courseStudents[$v] = [];
+        }
+        
+        // Collect roll numbers for each course
+        foreach($allstd as $std)
+        {
+            $studentCourses = [];
+            if($std['course1']) $studentCourses[] = $std['course1'];
+            if($std['course2']) $studentCourses[] = $std['course2'];
+            if($std['course3']) $studentCourses[] = $std['course3'];
+            if($std['course4']) $studentCourses[] = $std['course4'];
+            if($std['course5']) $studentCourses[] = $std['course5'];
+            
+            foreach($studentCourses as $courseId)
+            {
+                if(!in_array($std['roll'], $courseStudents[$courseId]))
+                {
+                    $courseStudents[$courseId][] = $std['roll'];
+                }
+            }
+        }
+        
+        // Sort roll numbers in ascending order for each course
+        foreach($courseStudents as $courseId => $rolls)
+        {
+            sort($courseStudents[$courseId]);
+        }
+        
+        $coursemap = Course::all()->wherein('id',$vertex)->pluck('course_code','id')->toArray();
+        
+        $filename = 'courses_exam_' . $examid . '_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            "Content-Type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+        
+        $callback = function() use ($vertexcount, $coursemap, $courseStudents) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Course', 'No. of Students', 'Student Rolls (Ascending Order)']);
+            
+            foreach($vertexcount as $v => $count) {
+                $studentRolls = isset($courseStudents[$v]) ? implode(', ', $courseStudents[$v]) : '';
+                fputcsv($file, [$coursemap[$v], $count, $studentRolls]);
+            }
+            
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
+    }
+    
+    public function exportDependenciesCSV($examid)
+    {
+        $courses = RegisteredStudent::all()->where('examid','=',$examid)->where('verified','=', true);
+        $allstd = $courses->toArray();
+        $edge = (object)[];
+        $vertex = [];
+        
+        foreach($allstd as $std)
+        {
+            if($std['course1'])
+                array_push($vertex, $std['course1']);
+            if($std['course2'])
+                array_push($vertex, $std['course2']);
+            if($std['course3'])
+                array_push($vertex, $std['course3']);
+            if($std['course4'])
+                array_push($vertex, $std['course4']);
+            if($std['course5'])
+                array_push($vertex, $std['course5']);
+        }
+        $vertex = array_unique($vertex);
+        
+        foreach($vertex as $v)
+        {
+            $edge->$v = [];
+        }
+        
+        foreach($allstd as $std)
+        {
+            $items = [];
+            if($std['course1'])
+                array_push($items, $std['course1']);
+            if($std['course2'])
+                array_push($items, $std['course2']);
+            if($std['course3'])
+                array_push($items, $std['course3']);
+            if($std['course4'])
+                array_push($items, $std['course4']);
+            if($std['course5'])
+                array_push($items, $std['course5']);
+            
+            foreach($items as $item)
+            {
+                foreach($items as $it)
+                {
+                    if($item != $it)
+                        array_push($edge->$item, $it);
+                }
+                $edge->$item = array_unique($edge->$item);
+            }
+        }
+        
+        $coursemap = Course::all()->wherein('id',$vertex)->pluck('course_code','id')->toArray();
+        
+        $filename = 'dependencies_exam_' . $examid . '_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            "Content-Type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+        
+        $callback = function() use ($vertex, $edge, $coursemap) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Course', 'Dependencies']);
+            
+            foreach($vertex as $v) {
+                $dependencies = [];
+                foreach($edge->$v as $e) {
+                    $dependencies[] = $coursemap[$e];
+                }
+                $dependencyString = implode(', ', $dependencies);
+                fputcsv($file, [$coursemap[$v], $dependencyString]);
+            }
+            
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
+    }
+    
+    public function exportScheduleCSV($examid)
+    {
+        // Get the same data as in schedule method
+        $courses = RegisteredStudent::all()->where('examid','=',$examid)->where('verified','=', true);
+        $allstd = $courses->toArray();
+        $edge = (object)[];
+        $result = (object)[];
+        $vertex = [];
+        
+        foreach($allstd as $std)
+        {
+            if($std['course1'])
+                array_push($vertex, $std['course1']);
+            if($std['course2'])
+                array_push($vertex, $std['course2']);
+            if($std['course3'])
+                array_push($vertex, $std['course3']);
+            if($std['course4'])
+                array_push($vertex, $std['course4']);
+            if($std['course5'])
+                array_push($vertex, $std['course5']);
+        }
+        $vertex = array_unique($vertex);
+        
+        foreach($vertex as $v)
+        {
+            $edge->$v = [];
+            $result->$v = -1;
+        }
+        
+        foreach($allstd as $std)
+        {
+            $items = [];
+            if($std['course1'])
+                array_push($items, $std['course1']);
+            if($std['course2'])
+                array_push($items, $std['course2']);
+            if($std['course3'])
+                array_push($items, $std['course3']);
+            if($std['course4'])
+                array_push($items, $std['course4']);
+            if($std['course5'])
+                array_push($items, $std['course5']);
+            
+            foreach($items as $item)
+            {
+                foreach($items as $it)
+                {
+                    if($item != $it)
+                        array_push($edge->$item, $it);
+                }
+                $edge->$item = array_unique($edge->$item);
+            }
+        }
+        
+        foreach($vertex as $node)
+        {
+            $used = [];
+            foreach($edge->$node as $adjacent)
+            {
+                if($node == $adjacent)
+                    continue;
+                if($result->$adjacent != -1)
+                     array_push($used, $result->$adjacent);
+            }
+            for($i=0;$i<count($vertex);$i++)
+            {
+                $found = false;
+                foreach($used as $c)
+                {
+                    if($i==$c) 
+                        $found = true; 
+                }
+                if($found == false)
+                {
+                    $result->$node = $i;
+                    break;
+                }
+            }
+        }
+        
+        $ret = [];
+        $colors = [];
+        foreach($vertex as $v)
+        {
+            array_push($colors, $result->$v);
+        }
+        foreach($colors as $color)
+        {
+            $ret[$color] = [];
+        }
+        foreach($vertex as $v)
+        {
+            array_push($ret[$result->$v], $v);
+        }
+        
+        $coursemap = Course::all()->wherein('id',$vertex)->pluck('course_code','id')->toArray();
+        
+        $filename = 'schedule_exam_' . $examid . '_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        $headers = [
+            "Content-Type" => "text/csv",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+        
+        $callback = function() use ($ret, $coursemap) {
+            $file = fopen('php://output', 'w');
+            fputcsv($file, ['Date No.', 'Exams']);
+            
+            $dayCounter = 1;
+            foreach($ret as $days) {
+                $examCodes = [];
+                foreach($days as $exam) {
+                    $examCodes[] = $coursemap[$exam];
+                }
+                $examString = implode(', ', $examCodes);
+                fputcsv($file, [$dayCounter, $examString]);
+                $dayCounter++;
+            }
+            
+            fclose($file);
+        };
+        
+        return response()->stream($callback, 200, $headers);
+    }
+    
     public function course($courseid, $examid)
     {
         if($courseid == 0)

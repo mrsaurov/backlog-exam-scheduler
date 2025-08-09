@@ -27,6 +27,12 @@ Route::post('/login', [HomeController::class, 'login']);
 Route::post('/course', [AdminController::class, 'courseupdate'])->middleware('adminlogin');
 Route::get('/courses/{courseid}/{examid}',[AdminController::class, 'course'])->middleware('adminlogin');
 Route::get('/schedule/{id}',[AdminController::class, 'schedule'])->middleware('adminlogin');
+
+// CSV Export routes for schedule page
+Route::get('/export/courses/{examid}', [AdminController::class, 'exportCoursesCSV'])->middleware('adminlogin');
+Route::get('/export/dependencies/{examid}', [AdminController::class, 'exportDependenciesCSV'])->middleware('adminlogin');
+Route::get('/export/schedule/{examid}', [AdminController::class, 'exportScheduleCSV'])->middleware('adminlogin');
+
 Route::get('/students/{id}',[AdminController::class, 'students'])->middleware('adminlogin');
 Route::post('/students',[AdminController::class, 'studentsupdate'])->middleware('adminlogin');
 Route::delete('/students/delete',[AdminController::class, 'studentdelete'])->middleware('adminlogin');
