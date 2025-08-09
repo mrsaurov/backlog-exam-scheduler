@@ -6,6 +6,7 @@ use App\Models\AvailableExam;
 use App\Models\CourseExamMapping;
 use App\Models\Course;
 use App\Models\RegisteredStudent;
+use App\Models\Notice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Session;
 use Illuminate\Support\Facades\DB;
@@ -19,6 +20,13 @@ class HomeController extends Controller
     public function home()
     {
         $exams = AvailableExam::all()->where('deadline','>=', date("Y-m-d"));
+        
+        // Add notice counts for each exam
+        foreach ($exams as $exam) {
+            $exam->notice_count = Notice::where('exam_id', $exam->id)
+                                      ->where('is_active', true)
+                                      ->count();
+        }
 
         return view('home')->with('exams', $exams);
     }
@@ -28,8 +36,17 @@ class HomeController extends Controller
         $course_num = CourseExamMapping::where('examid','=',$examid)->pluck('courseid')->toArray();
         
         $courses = Course::all()->whereIn('id', $course_num);
+        
+        // Get active notices for this exam
+        $notices = Notice::where('exam_id', $examid)
+                        ->where('is_active', true)
+                        ->orderBy('created_at', 'desc')
+                        ->take(3) // Show only latest 3 notices
+                        ->get();
+        
         return view('register')->with(['exam'=>$exam,
                                         'courses'=>$courses,
+                                        'notices'=>$notices,
                                         'cnum'=>$course_num]);
     }
     public function registerstudent(Request $request)
@@ -40,19 +57,25 @@ class HomeController extends Controller
             'roll' => 'required|integer|min:1',
             'registration' => 'required|integer|min:1',
             'examid' => 'required|integer|exists:available_exams,id',
-            'course1' => 'required|integer|min:1'
+            'course1' => 'required|integer|min:1',
+            'last_appeared_exam' => 'required|string|max:255',
+            'backlogged_subjects' => 'required|string'
         ]);
 
         $examid = $request->input('examid');
         $name = $request->input('name');
         $roll = $request->input('roll');
         $reg = $request->input('registration');
+        $lastAppearedExam = $request->input('last_appeared_exam');
+        $backloggedSubjects = $request->input('backlogged_subjects');
 
         $data = [
             'examid'=>$examid,
             'name' => $name,
             'roll' => $roll,
-            'registration' => $reg
+            'registration' => $reg,
+            'last_appeared_exam' => $lastAppearedExam,
+            'backlogged_subjects' => $backloggedSubjects
         ];
 
         $course1 = $request->input('course1');
@@ -100,12 +123,11 @@ class HomeController extends Controller
         }    
         $std = RegisteredStudent::all()->where('examid','=',$examid)->where('roll','=',$roll)->first();
         if($std) {
-            echo "You've already registered for this exam. To download your application again <a href='/download/".$examid."/".$roll."'>click here</a>";
-            return;
+            return redirect('/')->with('error', 'You have already registered for this exam. To download your application again, <a href="/download/'.$examid.'/'.$roll.'" class="alert-link">click here</a>.');
         }
         
         RegisteredStudent::insert($data);
-        return redirect("/download/".$examid.'/'.$roll);
+        return redirect('/')->with('success', 'Registration successful! Your application has been submitted. <a href="/download/'.$examid.'/'.$roll.'" class="alert-link">Download your application form</a>.');
         
     }
     public function download(Request $req, $examid, $roll)
@@ -139,8 +161,17 @@ class HomeController extends Controller
     }
     public function admin()
     {
-        $exams = AvailableExam::orderBy('deadline', 'desc')->take(10)->get();
-        return view('admin',['exams'=>$exams]);
+        $exams = AvailableExam::all();
+        
+        // Add notice counts for each exam
+        foreach ($exams as $exam) {
+            $exam->notice_count = Notice::where('exam_id', $exam->id)->count();
+            $exam->active_notice_count = Notice::where('exam_id', $exam->id)
+                                               ->where('is_active', true)
+                                               ->count();
+        }
+        
+        return view('admin')->with('exams', $exams);
     }
     public function logout(Request $data)
     {
@@ -228,5 +259,19 @@ class HomeController extends Controller
             flash()->addSuccess('Exam created successfully.');
             return redirect('/exams/'.$examid);
         }
+    }
+    
+    public function examNotices($examId)
+    {
+        $exam = AvailableExam::findOrFail($examId);
+        $notices = Notice::where('exam_id', $examId)
+                        ->where('is_active', true)
+                        ->orderBy('created_at', 'desc')
+                        ->get();
+        
+        return view('exam-notices')->with([
+            'exam' => $exam,
+            'notices' => $notices
+        ]);
     }
 }

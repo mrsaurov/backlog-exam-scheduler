@@ -36,6 +36,14 @@
             <input type="number" class="form-control" name="registration" id="registration" placeholder="Enter your registration number" value="{{ old('registration') }}" min="1" required>
         </div>
         <div class="form-group">
+            <label for="last_appeared_exam">Last Appeared Exam:</label>
+            <input type="text" class="form-control" name="last_appeared_exam" id="last_appeared_exam" placeholder="ex: 4th Year Backlog 2023" value="{{ old('last_appeared_exam') }}" required>
+        </div>
+        <div class="form-group">
+            <label for="backlogged_subjects">List of Backlogged Subjects:</label>
+            <input type="text" class="form-control" name="backlogged_subjects" id="backlogged_subjects" placeholder="ex: CSE 2201, Math 1213,..." value="{{ old('backlogged_subjects') }}" required>
+        </div>
+        <div class="form-group">
             <label for="course1">Course 1:</label>
             <select class="form-select" name="course1" id="course1" placeholder="Select first subject" required>
                 @foreach($courses as $course)
@@ -79,7 +87,10 @@
                 @endforeach
             </select>
         </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary">Submit</button>
+            <a href="/" class="btn btn-secondary ml-2">Back to Home</a>
+        </div>
     </form>
 
 <script>

@@ -74,4 +74,8 @@ Day wise exam:
 </table>
 </div>
 
+<div class="mt-4">
+    <a href="/admin" class="btn btn-secondary">Back to Admin Panel</a>
+</div>
+
 @endsection

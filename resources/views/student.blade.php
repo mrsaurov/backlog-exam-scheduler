@@ -135,6 +135,9 @@
                     >
                 </td>
                 <td class="text-center">
+                    <button type="button" class="btn btn-info btn-sm me-1" onclick="viewStudentDetails({{$student['id']}}, '{{$student['name']}}', '{{addslashes($student['last_appeared_exam'] ?? 'Not specified')}}', '{{addslashes($student['backlogged_subjects'] ?? 'Not specified')}}')" title="View Additional Details">
+                        <i class="fas fa-info-circle"></i> Details
+                    </button>
                     <button type="button" class="btn btn-primary btn-sm me-1" onclick="editStudent({{$student['id']}})">
                         Edit
                     </button>
@@ -148,6 +151,7 @@
 </table>
 
 <button class="btn-primary btn" type="submit" name="submit">Save</button>
+<a href="/admin" class="btn btn-secondary ml-2">Back to Admin Panel</a>
 </form>
 
 <!-- Hidden form for delete operations -->
@@ -276,7 +280,50 @@
     </div>
 </div>
 
+<!-- Student Details Modal -->
+<div class="modal fade" id="studentDetailsModal" tabindex="-1" role="dialog" aria-labelledby="studentDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="studentDetailsModalLabel">Student Additional Information</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-primary">Student: <span id="detailStudentName"></span></h6>
+                        <hr>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="font-weight-bold">Last Appeared Exam:</label>
+                    <p id="detailLastExam" class="text-muted"></p>
+                </div>
+                <div class="form-group">
+                    <label class="font-weight-bold">List of Backlogged Subjects:</label>
+                    <p id="detailBackloggedSubjects" class="text-muted"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
+function viewStudentDetails(studentId, studentName, lastExam, backloggedSubjects) {
+    // Set modal content
+    document.getElementById('detailStudentName').textContent = studentName;
+    document.getElementById('detailLastExam').textContent = lastExam || 'Not specified';
+    document.getElementById('detailBackloggedSubjects').textContent = backloggedSubjects || 'Not specified';
+    
+    // Show modal
+    $('#studentDetailsModal').modal('show');
+}
+
 function deleteStudent(studentId, studentName, studentRoll) {
     if (confirm(`Are you sure you want to delete the registration for ${studentName} (Roll: ${studentRoll})? This action cannot be undone.`)) {
         document.getElementById('deleteStudentId').value = studentId;
@@ -285,20 +332,21 @@ function deleteStudent(studentId, studentName, studentRoll) {
 }
 
 function editStudent(studentId) {
-    // Find the student data from the table
-    const studentRow = document.querySelector(`button[onclick="editStudent(${studentId})"]`).closest('tr');
-    const cells = studentRow.cells;
-    
-    // Get student data from table cells
-    const roll = cells[0].textContent;
-    const name = cells[1].textContent;
-    const registration = cells[2].textContent;
-    const course1 = cells[3].textContent;
-    const course2 = cells[4].textContent;
-    const course3 = cells[5].textContent;
-    const course4 = cells[6].textContent;
-    const course5 = cells[7].textContent;
-    const verified = cells[8].querySelector('input').checked;
+    try {
+        // Find the student data from the table
+        const studentRow = document.querySelector(`button[onclick="editStudent(${studentId})"]`).closest('tr');
+        const cells = studentRow.cells;
+        
+        // Get student data from table cells (adjusted for Sl. No. column)
+        const roll = cells[1].textContent;        // Was cells[0], now cells[1]
+        const name = cells[2].textContent;        // Was cells[1], now cells[2]
+        const registration = cells[3].textContent; // Was cells[2], now cells[3]
+        const course1 = cells[4].textContent;     // Was cells[3], now cells[4]
+        const course2 = cells[5].textContent;     // Was cells[4], now cells[5]
+        const course3 = cells[6].textContent;     // Was cells[5], now cells[6]
+        const course4 = cells[7].textContent;     // Was cells[6], now cells[7]
+        const course5 = cells[8].textContent;     // Was cells[7], now cells[8]
+        const verified = cells[9].querySelector('input').checked; // Was cells[8], now cells[9]
     
     // Set form values
     document.getElementById('editStudentIdInput').value = studentId;
@@ -323,6 +371,10 @@ function editStudent(studentId) {
     
     // Show modal
     $('#editStudentModal').modal('show');
+    } catch (error) {
+        console.error('Error in editStudent function:', error);
+        alert('Error opening edit modal. Please try again.');
+    }
 }
 
 // Add course duplicate prevention for edit form

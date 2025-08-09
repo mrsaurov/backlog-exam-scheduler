@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\AvailableExam;
 use App\Models\Course;
+use App\Models\CourseExamMapping;
 use App\Models\RegisteredStudent;
+use App\Models\Notice;
 use Hamcrest\Core\IsTypeOf;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\Request;
@@ -29,7 +31,9 @@ class AdminController extends Controller
         $students = $students->toArray();
         $exam = AvailableExam::all()->where('id','=',$id)->first();
 
-        $courses = Course::all();
+        // Get only courses that are mapped to this specific exam
+        $examCourseIds = CourseExamMapping::where('examid', $id)->pluck('courseid')->toArray();
+        $courses = Course::whereIn('id', $examCourseIds)->get();
         $coursesArray = $courses->toArray();
         $coursemap = [];
         foreach($coursesArray as $crs)
@@ -329,21 +333,14 @@ class AdminController extends Controller
             return redirect('/students/'.$examid);
         }
         
-        // Check if roll or registration number already exists for other students in the same exam
+        // Check if roll number already exists for other students in the same exam
         $existingStudent = RegisteredStudent::where('examid', $examid)
             ->where('id', '!=', $studentId)
-            ->where(function($query) use ($roll, $registration) {
-                $query->where('roll', $roll)
-                      ->orWhere('registration', $registration);
-            })
+            ->where('roll', $roll)
             ->first();
             
         if ($existingStudent) {
-            if ($existingStudent->roll == $roll) {
-                flash()->addError('Roll number already exists for another student in this exam!');
-            } else {
-                flash()->addError('Registration number already exists for another student in this exam!');
-            }
+            flash()->addError('Roll number already exists for another student in this exam!');
             return redirect('/students/'.$examid);
         }
         
@@ -370,5 +367,98 @@ class AdminController extends Controller
         }
         
         return redirect('/students/'.$examid);
+    }
+    
+    // Notice Management Methods
+    public function notices($examid)
+    {
+        $exam = AvailableExam::findOrFail($examid);
+        $notices = Notice::where('exam_id', $examid)->orderBy('created_at', 'desc')->get();
+        
+        return view('notices')->with([
+            'exam' => $exam,
+            'notices' => $notices
+        ]);
+    }
+    
+    public function noticeForm($examid, $noticeid = 0)
+    {
+        $exam = AvailableExam::findOrFail($examid);
+        
+        if ($noticeid == 0) {
+            $notice = (object)[
+                'id' => 0,
+                'title' => '',
+                'content' => '',
+                'is_active' => true
+            ];
+        } else {
+            $notice = Notice::findOrFail($noticeid);
+        }
+        
+        return view('notice-form')->with([
+            'exam' => $exam,
+            'notice' => $notice,
+            'isNew' => $noticeid == 0
+        ]);
+    }
+    
+    public function noticeStore(Request $request)
+    {
+        $operation = $request->input('submit');
+        $examId = $request->input('exam_id');
+        $noticeId = $request->input('notice_id');
+
+        try {
+            if ($operation === 'delete') {
+                // Validate inputs needed for delete only
+                $request->validate([
+                    'exam_id' => 'required|integer|exists:available_exams,id',
+                    'notice_id' => 'required|integer|exists:notices,id',
+                ]);
+
+                $notice = Notice::findOrFail($noticeId);
+                $notice->delete();
+                flash()->addSuccess('Notice deleted successfully!');
+            } else {
+                // Normalize checkbox to explicit boolean-friendly value
+                $request->merge([
+                    'is_active' => $request->has('is_active') ? 1 : 0,
+                ]);
+
+                // Validate for create/update
+                $request->validate([
+                    'title' => 'required|string|max:500',
+                    'content' => 'required|string',
+                    'exam_id' => 'required|integer|exists:available_exams,id',
+                    'is_active' => 'sometimes|boolean',
+                ]);
+
+                if ($operation === 'create') {
+                    Notice::create([
+                        'title' => $request->input('title'),
+                        'content' => $request->input('content'),
+                        'exam_id' => $examId,
+                        'is_active' => (bool)$request->input('is_active'),
+                    ]);
+                    flash()->addSuccess('Notice created successfully!');
+                } elseif ($operation === 'update') {
+                    $request->validate([
+                        'notice_id' => 'required|integer|exists:notices,id',
+                    ]);
+                    $notice = Notice::findOrFail($noticeId);
+                    $notice->update([
+                        'title' => $request->input('title'),
+                        'content' => $request->input('content'),
+                        'is_active' => (bool)$request->input('is_active'),
+                    ]);
+                    flash()->addSuccess('Notice updated successfully!');
+                }
+            }
+        } catch (Exception $e) {
+            flash()->addError('Error processing notice: ' . $e->getMessage());
+        }
+
+        return redirect('/notices/' . $examId);
     }
 }

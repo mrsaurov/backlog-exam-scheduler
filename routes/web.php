@@ -38,3 +38,12 @@ Route::get('/logout', [HomeController::class, 'logout']);
 Route::get('/download/{examid}/{roll}',[HomeController::class, 'download']);
 Route::post('/exams',[HomeController::class, 'addorupdateexams'])->middleware('adminlogin');
 
+// Notice routes for students
+Route::get('/exam/{examid}/notices', [HomeController::class, 'examNotices']);
+
+// Notice management routes for admin
+Route::get('/notices/{examid}', [AdminController::class, 'notices'])->middleware('adminlogin');
+Route::get('/notices/{examid}/create', [AdminController::class, 'noticeForm'])->middleware('adminlogin');
+Route::get('/notices/{examid}/edit/{noticeid}', [AdminController::class, 'noticeForm'])->middleware('adminlogin');
+Route::post('/notices', [AdminController::class, 'noticeStore'])->middleware('adminlogin');
+

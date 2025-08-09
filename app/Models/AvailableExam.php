@@ -13,4 +13,9 @@ class AvailableExam extends Model
     protected $fillable = [
         'exam_name', 'department', 'series', 'deadline'
     ];
+    
+    public function notices()
+    {
+        return $this->hasMany(Notice::class, 'exam_id');
+    }
 }
