@@ -19,20 +19,33 @@ class HomeController extends Controller
     //
     public function home()
     {
-        $exams = AvailableExam::all()->where('deadline','>=', date("Y-m-d"));
+        // Get exams that are not older than 3 months from deadline
+        $threeMonthsAgo = date('Y-m-d', strtotime('-3 months'));
+        $exams = AvailableExam::where('deadline', '>=', $threeMonthsAgo)
+                              ->orderBy('deadline', 'desc')
+                              ->get();
         
-        // Add notice counts for each exam
+        // Add notice counts and deadline status for each exam
         foreach ($exams as $exam) {
             $exam->notice_count = Notice::where('exam_id', $exam->id)
                                       ->where('is_active', true)
                                       ->count();
+            
+            // Check if registration is still open (deadline not passed)
+            $exam->registration_open = $exam->deadline >= date('Y-m-d');
         }
 
         return view('home')->with('exams', $exams);
     }
     public function register($examid)
     {
-        $exam = AvailableExam::all()->where('id','=', $examid)->first();
+        $exam = AvailableExam::findOrFail($examid);
+        
+        // Check if registration is still open
+        if ($exam->deadline < date('Y-m-d')) {
+            return redirect('/')->with('error', 'Registration deadline for this exam has passed.');
+        }
+        
         $course_num = CourseExamMapping::where('examid','=',$examid)->pluck('courseid')->toArray();
         
         $courses = Course::all()->whereIn('id', $course_num);
@@ -63,6 +76,13 @@ class HomeController extends Controller
         ]);
 
         $examid = $request->input('examid');
+        
+        // Check if registration is still open for this exam
+        $exam = AvailableExam::findOrFail($examid);
+        if ($exam->deadline < date('Y-m-d')) {
+            return redirect('/')->with('error', 'Registration deadline for this exam has passed.');
+        }
+        
         $name = $request->input('name');
         $roll = $request->input('roll');
         $reg = $request->input('registration');
@@ -161,7 +181,7 @@ class HomeController extends Controller
     }
     public function admin()
     {
-        $exams = AvailableExam::all();
+        $exams = AvailableExam::orderBy('deadline', 'desc')->get();
         
         // Add notice counts for each exam
         foreach ($exams as $exam) {

@@ -713,6 +713,12 @@ class AdminController extends Controller
                 ]);
 
                 $notice = Notice::findOrFail($noticeId);
+                
+                // Delete associated file if exists
+                if ($notice->file_path && file_exists(public_path($notice->file_path))) {
+                    unlink(public_path($notice->file_path));
+                }
+                
                 $notice->delete();
                 flash()->addSuccess('Notice deleted successfully!');
             } else {
@@ -722,31 +728,79 @@ class AdminController extends Controller
                 ]);
 
                 // Validate for create/update
-                $request->validate([
+                $validationRules = [
                     'title' => 'required|string|max:500',
                     'content' => 'required|string',
                     'exam_id' => 'required|integer|exists:available_exams,id',
                     'is_active' => 'sometimes|boolean',
-                ]);
+                ];
+                
+                // Add file validation if file is uploaded
+                if ($request->hasFile('notice_file')) {
+                    $validationRules['notice_file'] = 'file|mimes:pdf,jpg,jpeg,png,gif,doc,docx|max:5120'; // 5MB max
+                }
+                
+                $request->validate($validationRules);
+
+                // Handle file upload
+                $fileData = [];
+                if ($request->hasFile('notice_file')) {
+                    $file = $request->file('notice_file');
+                    
+                    // Get file information BEFORE moving the file
+                    $originalName = $file->getClientOriginalName();
+                    $mimeType = $file->getClientMimeType();
+                    $fileSize = $file->getSize();
+                    
+                    $fileName = time() . '_' . $originalName;
+                    $filePath = 'uploads/notices/' . $fileName;
+                    
+                    // Create directory if it doesn't exist
+                    $directory = public_path('uploads/notices');
+                    if (!file_exists($directory)) {
+                        mkdir($directory, 0755, true);
+                    }
+                    
+                    // Move file to public directory
+                    $file->move($directory, $fileName);
+                    
+                    $fileData = [
+                        'file_name' => $originalName,
+                        'file_path' => $filePath,
+                        'file_type' => $mimeType,
+                        'file_size' => $fileSize,
+                    ];
+                }
 
                 if ($operation === 'create') {
-                    Notice::create([
+                    Notice::create(array_merge([
                         'title' => $request->input('title'),
                         'content' => $request->input('content'),
                         'exam_id' => $examId,
                         'is_active' => (bool)$request->input('is_active'),
-                    ]);
+                    ], $fileData));
                     flash()->addSuccess('Notice created successfully!');
                 } elseif ($operation === 'update') {
                     $request->validate([
                         'notice_id' => 'required|integer|exists:notices,id',
                     ]);
                     $notice = Notice::findOrFail($noticeId);
-                    $notice->update([
+                    
+                    $updateData = [
                         'title' => $request->input('title'),
                         'content' => $request->input('content'),
                         'is_active' => (bool)$request->input('is_active'),
-                    ]);
+                    ];
+                    
+                    // If new file uploaded, delete old file and update with new file data
+                    if (!empty($fileData)) {
+                        if ($notice->file_path && file_exists(public_path($notice->file_path))) {
+                            unlink(public_path($notice->file_path));
+                        }
+                        $updateData = array_merge($updateData, $fileData);
+                    }
+                    
+                    $notice->update($updateData);
                     flash()->addSuccess('Notice updated successfully!');
                 }
             }
@@ -755,5 +809,22 @@ class AdminController extends Controller
         }
 
         return redirect('/notices/' . $examId);
+    }
+    
+    public function viewNoticeFile($noticeId)
+    {
+        $notice = Notice::findOrFail($noticeId);
+        
+        if (!$notice->file_path || !file_exists(public_path($notice->file_path))) {
+            abort(404, 'File not found');
+        }
+        
+        $filePath = public_path($notice->file_path);
+        $mimeType = $notice->file_type ?: mime_content_type($filePath);
+        
+        return response()->file($filePath, [
+            'Content-Type' => $mimeType,
+            'Content-Disposition' => 'inline; filename="' . $notice->file_name . '"'
+        ]);
     }
 }

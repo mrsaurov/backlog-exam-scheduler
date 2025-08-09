@@ -63,6 +63,25 @@
                 </div>
                 <div class="card-body">
                     <p class="card-text">{!! nl2br(strip_tags($notice->content, '<b><i><br>')) !!}</p>
+                    
+                    @if($notice->file_name)
+                        <div class="alert alert-light border-left-primary mt-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-paperclip text-primary mr-2"></i>
+                                <div>
+                                    <strong>Attachment:</strong>
+                                    <a href="/notice-file/{{$notice->id}}" target="_blank" class="text-primary ml-1">
+                                        {{$notice->file_name}}
+                                    </a>
+                                    <small class="text-muted d-block">
+                                        {{ strtoupper(pathinfo($notice->file_name, PATHINFO_EXTENSION)) }} • 
+                                        {{ number_format($notice->file_size / 1024, 1) }} KB
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                    
                     <small class="text-muted">Created: {{$notice->created_at->format('d M Y, h:i A')}}</small>
                     @if($notice->updated_at != $notice->created_at)
                         <small class="text-muted"> | Updated: {{$notice->updated_at->format('d M Y, h:i A')}}</small>

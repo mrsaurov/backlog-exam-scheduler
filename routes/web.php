@@ -53,3 +53,10 @@ Route::get('/notices/{examid}/create', [AdminController::class, 'noticeForm'])->
 Route::get('/notices/{examid}/edit/{noticeid}', [AdminController::class, 'noticeForm'])->middleware('adminlogin');
 Route::post('/notices', [AdminController::class, 'noticeStore'])->middleware('adminlogin');
 
+// Notice file viewing route
+Route::get('/notice-file/{noticeid}', [AdminController::class, 'viewNoticeFile']);
+
+// Route::get('/migrate-now', function () {
+//     Artisan::call('migrate', ['--force' => true]);
+//     return 'Migrations executed!';
+// });

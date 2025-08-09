@@ -10,7 +10,7 @@ class Notice extends Model
     use HasFactory;
     
     protected $fillable = [
-        'title', 'content', 'exam_id', 'is_active'
+        'title', 'content', 'exam_id', 'is_active', 'file_name', 'file_path', 'file_type', 'file_size'
     ];
     
     protected $casts = [

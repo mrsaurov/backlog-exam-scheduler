@@ -16,7 +16,7 @@
             </div>
         @endif
         
-        <form action="/notices" method="POST">
+        <form action="/notices" method="POST" enctype="multipart/form-data">
             @csrf
             <input type="hidden" name="exam_id" value="{{$exam->id}}">
             @if(!$isNew)
@@ -39,6 +39,30 @@
                 <textarea name="content" class="form-control" id="content" rows="10" 
                           placeholder="Enter notice content" required>{{ old('content', $notice->content) }}</textarea>
                 <small class="form-text text-muted">Use the toolbar to add <b>bold</b> or <i>italic</i>. Selected text will be wrapped. Allowed tags: &lt;b&gt;, &lt;i&gt;, &lt;br&gt;.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="notice_file">Attach File (Optional):</label>
+                @if(!$isNew && $notice->file_name)
+                    <div class="mb-2">
+                        <div class="alert alert-info py-2">
+                            <i class="fas fa-paperclip"></i> 
+                            <strong>Current file:</strong> 
+                            <a href="/notice-file/{{$notice->id}}" target="_blank" class="alert-link">
+                                {{$notice->file_name}}
+                            </a>
+                            <small class="text-muted">({{ number_format($notice->file_size / 1024, 1) }} KB)</small>
+                        </div>
+                    </div>
+                @endif
+                <input type="file" name="notice_file" class="form-control-file" id="notice_file" 
+                       accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx">
+                <small class="form-text text-muted">
+                    Supported formats: PDF, JPG, PNG, GIF, DOC, DOCX. Maximum size: 5MB.
+                    @if(!$isNew && $notice->file_name)
+                        <br><strong>Note:</strong> Uploading a new file will replace the current one.
+                    @endif
+                </small>
             </div>
             
             <div class="form-group form-check">
@@ -131,6 +155,37 @@ document.addEventListener('DOMContentLoaded', function(){
     italicBtn.addEventListener('click', function(){
         wrapSelection(contentEl, '<i>', '</i>');
     });
+    
+    // File upload preview
+    const fileInput = document.getElementById('notice_file');
+    if (fileInput) {
+        fileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const existingPreview = document.getElementById('file-preview');
+            
+            // Remove existing preview
+            if (existingPreview) {
+                existingPreview.remove();
+            }
+            
+            if (file) {
+                const preview = document.createElement('div');
+                preview.id = 'file-preview';
+                preview.className = 'alert alert-success mt-2';
+                
+                const fileSize = (file.size / 1024).toFixed(1);
+                const fileType = file.type || 'Unknown';
+                
+                preview.innerHTML = `
+                    <i class="fas fa-file text-success mr-2"></i>
+                    <strong>Selected file:</strong> ${file.name}<br>
+                    <small class="text-muted">Type: ${fileType} • Size: ${fileSize} KB</small>
+                `;
+                
+                fileInput.parentNode.insertBefore(preview, fileInput.nextSibling);
+            }
+        });
+    }
 });
 </script>
 @endsection

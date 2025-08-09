@@ -50,6 +50,25 @@
                     <div class="notice-content">
                         {!! nl2br(strip_tags($notice->content, '<b><i><br>')) !!}
                     </div>
+                    
+                    @if($notice->file_name)
+                        <div class="alert alert-info mt-3">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-download text-info mr-2"></i>
+                                <div>
+                                    <strong>Download Attachment:</strong>
+                                    <a href="/notice-file/{{$notice->id}}" target="_blank" class="text-info ml-1">
+                                        <i class="fas fa-external-link-alt"></i> {{$notice->file_name}}
+                                    </a>
+                                    <small class="text-muted d-block">
+                                        {{ strtoupper(pathinfo($notice->file_name, PATHINFO_EXTENSION)) }} File • 
+                                        {{ number_format($notice->file_size / 1024, 1) }} KB
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+                    
                     @if($notice->updated_at != $notice->created_at)
                         <hr>
                         <small class="text-muted">Last updated: {{$notice->updated_at->format('d M Y, h:i A')}}</small>

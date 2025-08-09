@@ -33,7 +33,13 @@
                     <strong>Series:</strong> {{$exam->series}}
                 </div>
                 <div class="col-sm-6">
-                    <strong>Deadline:</strong> <span class="text-danger">{{$exam->deadline}}</span>
+                    <strong>Deadline:</strong> 
+                    <span class="{{ $exam->registration_open ? 'text-danger' : 'text-muted' }}">
+                        {{$exam->deadline}}
+                    </span>
+                    @if(!$exam->registration_open)
+                        <small class="text-muted">(Registration Closed)</small>
+                    @endif
                 </div>
             </div>
             @if($exam->notice_count > 0)
@@ -42,18 +48,34 @@
                 </div>
             @endif
             <div class="btn-group-vertical d-block d-md-none mb-2">
-                <a href="/register/{{$exam->id}}" class="btn btn-primary mb-1">Register</a>
+                @if($exam->registration_open)
+                    <a href="/register/{{$exam->id}}" class="btn btn-primary mb-1">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                @else
+                    <div class="alert alert-warning py-2 mb-1">
+                        <i class="fas fa-clock"></i> Registration deadline has passed
+                    </div>
+                @endif
                 <a href="/exam/{{$exam->id}}/notices" class="btn btn-info">
-                    View Notices
+                    <i class="fas fa-bullhorn"></i> View Notices
                     @if($exam->notice_count > 0)
                         <span class="badge badge-light ml-1">{{$exam->notice_count}}</span>
                     @endif
                 </a>
             </div>
             <div class="d-none d-md-block">
-                <a href="/register/{{$exam->id}}" class="btn btn-primary">Register</a>
+                @if($exam->registration_open)
+                    <a href="/register/{{$exam->id}}" class="btn btn-primary">
+                        <i class="fas fa-user-plus"></i> Register
+                    </a>
+                @else
+                    <div class="alert alert-warning py-2 d-inline-block mr-2">
+                        <i class="fas fa-clock"></i> Registration deadline has passed
+                    </div>
+                @endif
                 <a href="/exam/{{$exam->id}}/notices" class="btn btn-info ml-2">
-                    View Notices
+                    <i class="fas fa-bullhorn"></i> View Notices
                     @if($exam->notice_count > 0)
                         <span class="badge badge-light ml-1">{{$exam->notice_count}}</span>
                     @endif
