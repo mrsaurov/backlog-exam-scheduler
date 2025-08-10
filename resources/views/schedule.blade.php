@@ -17,17 +17,19 @@
                 <table class="table table-striped">
                     <thead class="table-dark">
                         <th>Course</th>
+                        <th>Course Title</th>
                         <th>No. of Student(s)</th>
-                        <th>Student Rolls (Ascending Order)</th>
+                        <th>Student Rolls</th>
                     </thead>
                     <tbody>
-                        @foreach($vertexcount as $v=>$count)
+                        @foreach($sortedAllCoursesData as $courseData)
                             <tr>
-                                <td>{{$coursemap[$v]}}</td>
-                                <td>{{$count}}</td>
+                                <td>{{$courseData['course_code']}}</td>
+                                <td>{{$courseData['course_title']}}</td>
+                                <td>{{$courseData['count']}}</td>
                                 <td>
-                                    @if(isset($courseStudents[$v]))
-                                        {{ implode(', ', $courseStudents[$v]) }}
+                                    @if(isset($courseData['students']) && count($courseData['students']) > 0)
+                                        {{ implode(', ', $courseData['students']) }}
                                     @endif
                                 </td>
                             </tr>

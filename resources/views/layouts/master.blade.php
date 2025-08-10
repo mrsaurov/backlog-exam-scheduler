@@ -37,7 +37,7 @@
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div>
             <img src="/images/RUET_logo.svg" height="64px" width="64px"/>
-            <span>Backlog Registration</span>
+			<span><strong>Backlog Registration</strong></span>
         </div>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>

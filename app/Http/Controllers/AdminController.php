@@ -98,6 +98,31 @@ class AdminController extends Controller
         
         return redirect('/students/'.$examid);
     }
+    
+    private function isOddNumberedCourse($courseId)
+    {
+        // Get course code from database
+        $course = Course::find($courseId);
+        if (!$course) {
+            return false;
+        }
+        
+        $courseCode = $course->course_code;
+        
+        // Extract numbers from course code using regex
+        // This handles both "CSE 1101" and "Chem1113" formats
+        preg_match('/(\d+)/', $courseCode, $matches);
+        
+        if (empty($matches)) {
+            return false; // No numbers found
+        }
+        
+        $courseNumber = intval($matches[0]);
+        
+        // Check if the last digit is odd (making it an odd-numbered course)
+        return ($courseNumber % 2) === 1;
+    }
+    
     public function schedule($examid)
     {
         $courses = RegisteredStudent::all()->where('examid','=',$examid)->where('verified','=', true);
@@ -109,15 +134,16 @@ class AdminController extends Controller
         
         foreach($allstd as $std)
         {
-            if($std['course1'])
+            // Only consider odd-numbered courses
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($vertex, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($vertex, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($vertex, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($vertex, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($vertex, $std['course5']);
         }
         $vertexcount = array_count_values($vertex);
@@ -133,11 +159,12 @@ class AdminController extends Controller
         foreach($allstd as $std)
         {
             $studentCourses = [];
-            if($std['course1']) $studentCourses[] = $std['course1'];
-            if($std['course2']) $studentCourses[] = $std['course2'];
-            if($std['course3']) $studentCourses[] = $std['course3'];
-            if($std['course4']) $studentCourses[] = $std['course4'];
-            if($std['course5']) $studentCourses[] = $std['course5'];
+            // Only collect roll numbers for odd-numbered courses
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1'])) $studentCourses[] = $std['course1'];
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2'])) $studentCourses[] = $std['course2'];
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3'])) $studentCourses[] = $std['course3'];
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4'])) $studentCourses[] = $std['course4'];
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5'])) $studentCourses[] = $std['course5'];
             
             foreach($studentCourses as $courseId)
             {
@@ -154,6 +181,53 @@ class AdminController extends Controller
             sort($courseStudents[$courseId]);
         }
         
+        // For the first table - collect ALL courses (including even-numbered ones)
+        $allCourses = [];
+        $allCourseStudents = [];
+        
+        foreach($allstd as $std)
+        {
+            // Collect ALL courses regardless of odd/even
+            if($std['course1']) array_push($allCourses, $std['course1']);
+            if($std['course2']) array_push($allCourses, $std['course2']);
+            if($std['course3']) array_push($allCourses, $std['course3']);
+            if($std['course4']) array_push($allCourses, $std['course4']);
+            if($std['course5']) array_push($allCourses, $std['course5']);
+        }
+        $allCoursesCount = array_count_values($allCourses);
+        $allCourses = array_unique($allCourses);
+        
+        // Initialize allCourseStudents array for each course
+        foreach($allCourses as $courseId)
+        {
+            $allCourseStudents[$courseId] = [];
+        }
+        
+        // Collect roll numbers for ALL courses
+        foreach($allstd as $std)
+        {
+            $studentAllCourses = [];
+            if($std['course1']) $studentAllCourses[] = $std['course1'];
+            if($std['course2']) $studentAllCourses[] = $std['course2'];
+            if($std['course3']) $studentAllCourses[] = $std['course3'];
+            if($std['course4']) $studentAllCourses[] = $std['course4'];
+            if($std['course5']) $studentAllCourses[] = $std['course5'];
+            
+            foreach($studentAllCourses as $courseId)
+            {
+                if(!in_array($std['roll'], $allCourseStudents[$courseId]))
+                {
+                    $allCourseStudents[$courseId][] = $std['roll'];
+                }
+            }
+        }
+        
+        // Sort roll numbers in ascending order for each course
+        foreach($allCourseStudents as $courseId => $rolls)
+        {
+            sort($allCourseStudents[$courseId]);
+        }
+        
         foreach($vertex as $v)
         {
             $edge->$v = [];
@@ -162,15 +236,16 @@ class AdminController extends Controller
         foreach($allstd as $std)
         {
             $items = [];
-            if($std['course1'])
+            // Only include odd-numbered courses for dependency calculation
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($items, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($items, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($items, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($items, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($items, $std['course5']);
             foreach($items as $item)
             {
@@ -224,6 +299,26 @@ class AdminController extends Controller
             array_push($ret[$result->$v], $v);
         }
         $coursemap = Course::all()->wherein('id',$vertex)->pluck('course_code','id')->toArray();
+        $allCoursemap = Course::all()->wherein('id',$allCourses)->pluck('course_code','id')->toArray();
+        $allCourseTitles = Course::all()->wherein('id',$allCourses)->pluck('course_title','id')->toArray();
+        
+        // Sort allCoursesCount by course code for the first table
+        $sortedAllCoursesData = [];
+        foreach($allCoursesCount as $courseId => $count) {
+            $sortedAllCoursesData[] = [
+                'course_id' => $courseId,
+                'course_code' => $allCoursemap[$courseId],
+                'course_title' => $allCourseTitles[$courseId],
+                'count' => $count,
+                'students' => $allCourseStudents[$courseId]
+            ];
+        }
+        
+        // Sort by course code
+        usort($sortedAllCoursesData, function($a, $b) {
+            return strcmp($a['course_code'], $b['course_code']);
+        });
+        
         return view('schedule')->with([
             'edge'=>$edge,
             'vertex'=>$vertex,
@@ -231,6 +326,11 @@ class AdminController extends Controller
             'result'=>$ret,
             'coursemap'=>$coursemap,
             'courseStudents'=>$courseStudents,
+            'allCoursesCount'=>$allCoursesCount,
+            'allCoursemap'=>$allCoursemap,
+            'allCourseStudents'=>$allCourseStudents,
+            'allCourseTitles'=>$allCourseTitles,
+            'sortedAllCoursesData'=>$sortedAllCoursesData,
             'examid'=>$examid
         ]);
     }
@@ -244,15 +344,16 @@ class AdminController extends Controller
         
         foreach($allstd as $std)
         {
-            if($std['course1'])
+            // Only consider odd-numbered courses for export
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($vertex, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($vertex, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($vertex, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($vertex, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($vertex, $std['course5']);
         }
         $vertexcount = array_count_values($vertex);
@@ -268,11 +369,12 @@ class AdminController extends Controller
         foreach($allstd as $std)
         {
             $studentCourses = [];
-            if($std['course1']) $studentCourses[] = $std['course1'];
-            if($std['course2']) $studentCourses[] = $std['course2'];
-            if($std['course3']) $studentCourses[] = $std['course3'];
-            if($std['course4']) $studentCourses[] = $std['course4'];
-            if($std['course5']) $studentCourses[] = $std['course5'];
+            // Only include odd-numbered courses  
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1'])) $studentCourses[] = $std['course1'];
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2'])) $studentCourses[] = $std['course2'];
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3'])) $studentCourses[] = $std['course3'];
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4'])) $studentCourses[] = $std['course4'];
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5'])) $studentCourses[] = $std['course5'];
             
             foreach($studentCourses as $courseId)
             {
@@ -325,15 +427,16 @@ class AdminController extends Controller
         
         foreach($allstd as $std)
         {
-            if($std['course1'])
+            // Only consider odd-numbered courses
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($vertex, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($vertex, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($vertex, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($vertex, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($vertex, $std['course5']);
         }
         $vertex = array_unique($vertex);
@@ -346,15 +449,16 @@ class AdminController extends Controller
         foreach($allstd as $std)
         {
             $items = [];
-            if($std['course1'])
+            // Only consider odd-numbered courses for dependencies
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($items, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($items, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($items, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($items, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($items, $std['course5']);
             
             foreach($items as $item)
@@ -410,15 +514,16 @@ class AdminController extends Controller
         
         foreach($allstd as $std)
         {
-            if($std['course1'])
+            // Only consider odd-numbered courses for scheduling
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($vertex, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($vertex, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($vertex, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($vertex, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($vertex, $std['course5']);
         }
         $vertex = array_unique($vertex);
@@ -432,15 +537,16 @@ class AdminController extends Controller
         foreach($allstd as $std)
         {
             $items = [];
-            if($std['course1'])
+            // Only consider odd-numbered courses for schedule export
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1']))
                 array_push($items, $std['course1']);
-            if($std['course2'])
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2']))
                 array_push($items, $std['course2']);
-            if($std['course3'])
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3']))
                 array_push($items, $std['course3']);
-            if($std['course4'])
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4']))
                 array_push($items, $std['course4']);
-            if($std['course5'])
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5']))
                 array_push($items, $std['course5']);
             
             foreach($items as $item)
