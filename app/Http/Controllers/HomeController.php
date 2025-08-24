@@ -167,6 +167,25 @@ class HomeController extends Controller
                                             'courses'=>$courses]);
         return $pdf->download($roll.'_'.$exam->exam_name.'.pdf');
     }
+    
+    public function checkRegistration(Request $request, $examid)
+    {
+        $request->validate([
+            'roll' => 'required|integer|min:1'
+        ]);
+        
+        $roll = $request->input('roll');
+        $exam = AvailableExam::findOrFail($examid);
+        $student = RegisteredStudent::where('examid', $examid)->where('roll', $roll)->first();
+        
+        if ($student) {
+            // Student is registered, redirect to download
+            return redirect("/download/{$examid}/{$roll}");
+        } else {
+            // Student not found
+            return redirect("/register/{$examid}")->with('error', 'No registration found for roll number ' . $roll . '. Please register first.');
+        }
+    }
     public function login(Request $req)
     {
         $email = $req->input('email');

@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Artisan;
 Route::get('/', [HomeController::class,'home']);
 Route::get('/register/{id}',[HomeController::class, 'register']);
 Route::post('/register', [HomeController::class, 'registerstudent']);
+Route::post('/check-registration/{examid}', [HomeController::class, 'checkRegistration']);
 Route::get('/login',function (){
     return view('login');
 });

@@ -57,6 +57,9 @@
                         <i class="fas fa-clock"></i> Registration deadline has passed
                     </div>
                 @endif
+                <button type="button" class="btn btn-success mb-1" data-toggle="modal" data-target="#downloadModal{{$exam->id}}">
+                    <i class="fas fa-download"></i> Download Application
+                </button>
                 <a href="/exam/{{$exam->id}}/notices" class="btn btn-info">
                     <i class="fas fa-bullhorn"></i> View Notices
                     @if($exam->notice_count > 0)
@@ -74,6 +77,9 @@
                         <i class="fas fa-clock"></i> Registration deadline has passed
                     </div>
                 @endif
+                <button type="button" class="btn btn-success ml-2" data-toggle="modal" data-target="#downloadModal{{$exam->id}}">
+                    <i class="fas fa-download"></i> Download Application
+                </button>
                 <a href="/exam/{{$exam->id}}/notices" class="btn btn-info ml-2">
                     <i class="fas fa-bullhorn"></i> View Notices
                     @if($exam->notice_count > 0)
@@ -85,6 +91,38 @@
     </div>
     <br>
     <br>
+    @endforeach
+    
+    <!-- Download Application Modals for each exam -->
+    @foreach($exams as $exam)
+    <div class="modal fade" id="downloadModal{{$exam->id}}" tabindex="-1" role="dialog" aria-labelledby="downloadModalLabel{{$exam->id}}" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="downloadModalLabel{{$exam->id}}">Download Application - {{$exam->exam_name}}</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form action="/check-registration/{{$exam->id}}" method="POST">
+                    @csrf
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="downloadRoll{{$exam->id}}">Enter your Roll Number:</label>
+                            <input type="number" class="form-control" id="downloadRoll{{$exam->id}}" name="roll" min="1" placeholder="Enter your roll number" required>
+                            <small class="form-text text-muted">Enter the roll number you used during registration to download your application form for {{$exam->exam_name}}.</small>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-download"></i> Download Application
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     @endforeach
     @else
     <h2>No scheduled exams found. Please comeback later</h2>
