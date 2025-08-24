@@ -38,11 +38,20 @@ class AdminController extends Controller
         $coursemap = [];
         foreach($coursesArray as $crs)
         {
+            // Use only course_code for table display
             $coursemap[$crs['id']] = $crs['course_code'];
         }
         $stds = [];
         foreach($students as $std)
         {
+            // Store original course IDs for the edit modal
+            $std['course1_id'] = $std['course1'];
+            $std['course2_id'] = $std['course2'];
+            $std['course3_id'] = $std['course3'];
+            $std['course4_id'] = $std['course4'];
+            $std['course5_id'] = $std['course5'];
+            
+            // Convert to course codes with titles for display
             if($std['course1'] && $std['course1']>0) 
                 $std['course1'] = $coursemap[$std['course1']];
 

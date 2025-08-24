@@ -333,44 +333,31 @@ function deleteStudent(studentId, studentName, studentRoll) {
 
 function editStudent(studentId) {
     try {
-        // Find the student data from the table
-        const studentRow = document.querySelector(`button[onclick="editStudent(${studentId})"]`).closest('tr');
-        const cells = studentRow.cells;
+        // Get student data from the students array passed from backend
+        const students = @json($students);
+        const student = students.find(s => s.id == studentId);
         
-        // Get student data from table cells (adjusted for Sl. No. column)
-        const roll = cells[1].textContent;        // Was cells[0], now cells[1]
-        const name = cells[2].textContent;        // Was cells[1], now cells[2]
-        const registration = cells[3].textContent; // Was cells[2], now cells[3]
-        const course1 = cells[4].textContent;     // Was cells[3], now cells[4]
-        const course2 = cells[5].textContent;     // Was cells[4], now cells[5]
-        const course3 = cells[6].textContent;     // Was cells[5], now cells[6]
-        const course4 = cells[7].textContent;     // Was cells[6], now cells[7]
-        const course5 = cells[8].textContent;     // Was cells[7], now cells[8]
-        const verified = cells[9].querySelector('input').checked; // Was cells[8], now cells[9]
+        if (!student) {
+            alert('Student data not found!');
+            return;
+        }
     
-    // Set form values
-    document.getElementById('editStudentIdInput').value = studentId;
-    document.getElementById('editStudentName').value = name;
-    document.getElementById('editStudentRoll').value = roll;
-    document.getElementById('editStudentRegistration').value = registration;
-    document.getElementById('editVerified').value = verified ? '1' : '0';
-    
-    // Get course mappings to find course IDs
-    const courses = @json($courses);
-    const courseMap = {};
-    courses.forEach(course => {
-        courseMap[course.course_code] = course.id;
-    });
-    
-    // Set course selections
-    document.getElementById('editCourse1').value = courseMap[course1] || '';
-    document.getElementById('editCourse2').value = course2 === '' ? '0' : (courseMap[course2] || '0');
-    document.getElementById('editCourse3').value = course3 === '' ? '0' : (courseMap[course3] || '0');
-    document.getElementById('editCourse4').value = course4 === '' ? '0' : (courseMap[course4] || '0');
-    document.getElementById('editCourse5').value = course5 === '' ? '0' : (courseMap[course5] || '0');
-    
-    // Show modal
-    $('#editStudentModal').modal('show');
+        // Set form values
+        document.getElementById('editStudentIdInput').value = studentId;
+        document.getElementById('editStudentName').value = student.name;
+        document.getElementById('editStudentRoll').value = student.roll;
+        document.getElementById('editStudentRegistration').value = student.registration;
+        document.getElementById('editVerified').value = student.verified ? '1' : '0';
+        
+        // Set course selections using the stored course IDs
+        document.getElementById('editCourse1').value = student.course1_id || '';
+        document.getElementById('editCourse2').value = student.course2_id || '0';
+        document.getElementById('editCourse3').value = student.course3_id || '0';
+        document.getElementById('editCourse4').value = student.course4_id || '0';
+        document.getElementById('editCourse5').value = student.course5_id || '0';
+        
+        // Show modal
+        $('#editStudentModal').modal('show');
     } catch (error) {
         console.error('Error in editStudent function:', error);
         alert('Error opening edit modal. Please try again.');
