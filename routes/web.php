@@ -54,6 +54,24 @@ Route::get('/notices/{examid}/create', [AdminController::class, 'noticeForm'])->
 Route::get('/notices/{examid}/edit/{noticeid}', [AdminController::class, 'noticeForm'])->middleware('adminlogin');
 Route::post('/notices', [AdminController::class, 'noticeStore'])->middleware('adminlogin');
 
+// Teacher management routes
+Route::get('/teachers/{examid}', [App\Http\Controllers\TeacherController::class, 'index'])->middleware('adminlogin');
+Route::post('/teachers', [App\Http\Controllers\TeacherController::class, 'store'])->middleware('adminlogin');
+Route::post('/teachers/assign-teacher', [App\Http\Controllers\TeacherController::class, 'assignTeacher'])->middleware('adminlogin');
+Route::post('/teachers/remove-teacher', [App\Http\Controllers\TeacherController::class, 'removeTeacher'])->middleware('adminlogin');
+Route::post('/teachers/assign-course', [App\Http\Controllers\TeacherController::class, 'assignCourse'])->middleware('adminlogin');
+Route::delete('/teachers/remove-assignment', [App\Http\Controllers\TeacherController::class, 'removeAssignment'])->middleware('adminlogin');
+Route::get('/api/teachers/{examid}', [App\Http\Controllers\TeacherController::class, 'getTeachers'])->middleware('adminlogin');
+
+// Mail management routes
+Route::get('/mail/{examid}', [App\Http\Controllers\MailController::class, 'index'])->middleware('adminlogin');
+Route::get('/mail/{examid}/create', [App\Http\Controllers\MailController::class, 'form'])->middleware('adminlogin');
+Route::get('/mail/{examid}/edit/{templateid}', [App\Http\Controllers\MailController::class, 'form'])->middleware('adminlogin');
+Route::post('/mail', [App\Http\Controllers\MailController::class, 'store'])->middleware('adminlogin');
+Route::get('/mail/preview/{templateid}', [App\Http\Controllers\MailController::class, 'preview'])->middleware('adminlogin');
+Route::post('/mail/{examid}/send-general', [App\Http\Controllers\MailController::class, 'sendGeneral'])->middleware('adminlogin');
+Route::post('/mail/{examid}/send-customized', [App\Http\Controllers\MailController::class, 'sendCustomized'])->middleware('adminlogin');
+
 // Notice file viewing route
 Route::get('/notice-file/{noticeid}', [AdminController::class, 'viewNoticeFile']);
 

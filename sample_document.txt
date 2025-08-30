@@ -1,0 +1,20 @@
+RUET Department of Computer Science & Engineering
+Exam Notification Attachment
+
+Dear Faculty Members,
+
+This is a sample attachment document for testing the email attachment functionality in the Backlog Exam Scheduler System.
+
+Document Details:
+- Created: August 31, 2025
+- Purpose: Testing email attachments
+- System: Backlog Exam Scheduler
+- Department: CSE, RUET
+
+Please note that this document contains important information regarding the upcoming examinations and related administrative procedures.
+
+Thank you for your cooperation.
+
+Best regards,
+System Administrator
+CSE Department, RUET

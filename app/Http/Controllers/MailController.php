@@ -12,6 +12,7 @@ use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Exception;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 class MailController extends Controller
 {
@@ -243,11 +244,29 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
         $request->validate([
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
-            'deadline' => 'nullable|date'
+            'deadline' => 'nullable|date',
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*' => 'file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,jpg,jpeg,png'
         ]);
 
         try {
             $exam = AvailableExam::findOrFail($examid);
+            
+            // Handle file attachments
+            $attachmentPaths = [];
+            if ($request->hasFile('attachments')) {
+                foreach ($request->file('attachments') as $file) {
+                    $originalName = $file->getClientOriginalName();
+                    $filename = time() . '_' . uniqid() . '_' . $originalName;
+                    $path = $file->storeAs('mail_attachments', $filename);
+                    
+                    $attachmentPaths[] = [
+                        'path' => storage_path('app/' . $path),
+                        'name' => $originalName,
+                        'mime' => $file->getMimeType()
+                    ];
+                }
+            }
             
             // Get all teachers assigned to any course in this exam
             $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid) {
@@ -273,7 +292,8 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                     // Send email using Laravel Mail
                     Mail::to($teacher->email)->send(new ExamNotificationMail(
                         $personalizedSubject,
-                        $personalizedContent
+                        $personalizedContent,
+                        $attachmentPaths
                     ));
                     $sentCount++;
                 } catch (Exception $e) {
@@ -282,13 +302,31 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                 }
             }
 
+            // Clean up temporary attachment files
+            foreach ($attachmentPaths as $attachment) {
+                if (file_exists($attachment['path'])) {
+                    unlink($attachment['path']);
+                }
+            }
+
             $message = "General mail sent successfully! Sent: {$sentCount}";
             if ($failedCount > 0) {
                 $message .= ", Failed: {$failedCount}";
             }
+            if (count($attachmentPaths) > 0) {
+                $message .= " (with " . count($attachmentPaths) . " attachment(s))";
+            }
             
             return redirect('/mail/' . $examid)->with('success', $message);
         } catch (Exception $e) {
+            // Clean up any uploaded files in case of error
+            if (isset($attachmentPaths)) {
+                foreach ($attachmentPaths as $attachment) {
+                    if (file_exists($attachment['path'])) {
+                        unlink($attachment['path']);
+                    }
+                }
+            }
             return redirect('/mail/' . $examid)->with('error', 'Error sending mail: ' . $e->getMessage());
         }
     }
@@ -298,12 +336,22 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
      */
     public function sendCustomized(Request $request, $examid)
     {
-        $request->validate([
+        // Base validation rules
+        $rules = [
             'template_type' => 'required|in:ct_marks,sessional_marks,question_manuscript',
             'courses' => 'required|array|min:1',
             'courses.*' => 'exists:courses,id',
-            'deadline' => 'nullable|date'
-        ]);
+        ];
+        
+        // Make deadline required for specific templates
+        $templatesRequiringDeadline = ['ct_marks', 'sessional_marks', 'question_manuscript'];
+        if (in_array($request->template_type, $templatesRequiringDeadline)) {
+            $rules['deadline'] = 'required|date';
+        } else {
+            $rules['deadline'] = 'nullable|date';
+        }
+        
+        $request->validate($rules);
 
         try {
             $exam = AvailableExam::findOrFail($examid);

@@ -29,12 +29,14 @@
                 <a href="/exams/{{$exam->id}}" class="btn btn-primary mb-1">Edit/Delete</a>
                 <a href="/students/{{$exam->id}}" class="btn btn-primary mb-1">View/Verify Students</a>
                 <a href="/schedule/{{$exam->id}}" class="btn btn-primary mb-1">Schedule Exams</a>
-                <a href="/notices/{{$exam->id}}" class="btn btn-info">
+                <a href="/notices/{{$exam->id}}" class="btn btn-info mb-1">
                     Manage Notices
                     @if($exam->notice_count > 0)
                         <span class="badge badge-light ml-1">{{$exam->notice_count}}</span>
                     @endif
                 </a>
+                <a href="/teachers/{{$exam->id}}" class="btn btn-success mb-1">Manage Teachers</a>
+                <a href="/mail/{{$exam->id}}" class="btn btn-warning">Manage Mails</a>
             </div>
             <div class="d-none d-md-block">
                 <a href="/exams/{{$exam->id}}" class="btn btn-primary">Edit/Delete</a>
@@ -46,6 +48,8 @@
                         <span class="badge badge-light ml-1">{{$exam->notice_count}}</span>
                     @endif
                 </a>
+                <a href="/teachers/{{$exam->id}}" class="btn btn-success">Manage Teachers</a>
+                <a href="/mail/{{$exam->id}}" class="btn btn-warning">Manage Mails</a>
             </div>
         </div>
     </div>
