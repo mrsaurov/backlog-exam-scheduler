@@ -7,6 +7,7 @@ use App\Models\Course;
 use App\Models\AvailableExam;
 use App\Models\CourseTeacherAssignment;
 use App\Models\CourseExamMapping;
+use App\Models\RegisteredStudent;
 use Illuminate\Http\Request;
 use Exception;
 
@@ -19,9 +20,28 @@ class TeacherController extends Controller
     {
         $exam = AvailableExam::findOrFail($examid);
         
-        // Get courses mapped to this exam
-        $examCourseIds = CourseExamMapping::where('examid', $examid)->pluck('courseid')->toArray();
-        $courses = Course::whereIn('id', $examCourseIds)->get();
+        // Get courses that have verified student registrations for this exam
+        // This matches the logic from AdminController::schedule()
+        $registeredStudents = RegisteredStudent::where('examid', $examid)
+            ->where('verified', true)
+            ->get();
+        
+        $coursesWithStudents = [];
+        foreach($registeredStudents as $student) {
+            // Collect ALL courses (course1, course2, course3, course4, course5) 
+            // from verified students - both odd and even numbered courses
+            if($student->course1) $coursesWithStudents[] = $student->course1;
+            if($student->course2) $coursesWithStudents[] = $student->course2;
+            if($student->course3) $coursesWithStudents[] = $student->course3;
+            if($student->course4) $coursesWithStudents[] = $student->course4;
+            if($student->course5) $coursesWithStudents[] = $student->course5;
+        }
+        
+        // Get unique course IDs that have verified student registrations
+        $courseIds = array_unique($coursesWithStudents);
+        
+        // Load only courses that have verified student registrations
+        $courses = Course::whereIn('id', $courseIds)->orderBy('course_code')->get();
         
         // Get all teachers sorted by department then by designation hierarchy then by name
         $teachers = Teacher::with(['courseAssignments' => function($query) use ($examid) {
