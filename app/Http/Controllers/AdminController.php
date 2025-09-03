@@ -80,9 +80,15 @@ class AdminController extends Controller
     {
         $std = $req->input('verification');
         $examid = $req->input('examid');
+        
+        // First, set all students for this exam as unverified
         RegisteredStudent::where('examid','=', $examid)->update(array('verified'=>false));
 
-        RegisteredStudent::wherein('id',$std)->update(array('verified'=>true));
+        // Only update verified students if there are any selected
+        if (!empty($std) && is_array($std)) {
+            RegisteredStudent::wherein('id',$std)->update(array('verified'=>true));
+        }
+        
         flash()->addSuccess('Data has been saved successfully!');
 
         return redirect('/students/'.$examid);

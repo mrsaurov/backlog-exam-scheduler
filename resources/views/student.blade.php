@@ -2,8 +2,8 @@
  
 @section('title', 'Students')
  
-
 @section('content')
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
 
 @if(session('success'))
     <div class="alert alert-success">
@@ -99,6 +99,24 @@
     </div>
 </div>
 
+<!-- Bulk Verification Controls -->
+<div class="mb-3 d-flex justify-content-between align-items-center">
+    <div class="bulk-actions">
+        <label class="mr-2 font-weight-bold">Bulk Actions:</label>
+        <button type="button" class="btn btn-success btn-sm mr-2" id="verifyAllBtn" title="Verify All Students">
+            <i class="bi bi-check-circle"></i> Verify All
+        </button>
+        <button type="button" class="btn btn-warning btn-sm" id="unverifyAllBtn" title="Unverify All Students">
+            <i class="bi bi-x-circle"></i> Unverify All
+        </button>
+    </div>
+    <div class="verification-status">
+        <small class="text-muted">
+            <span id="verifiedCount">0</span> verified / <span id="totalCount">{{count($students)}}</span> total students
+        </small>
+    </div>
+</div>
+
 <table id="studentTable" class="table">
     <thead>
         <tr>
@@ -136,13 +154,13 @@
                 </td>
                 <td class="text-center">
                     <button type="button" class="btn btn-info btn-sm me-1" onclick="viewStudentDetails({{$student['id']}}, '{{$student['name']}}', '{{addslashes($student['last_appeared_exam'] ?? 'Not specified')}}', '{{addslashes($student['backlogged_subjects'] ?? 'Not specified')}}')" title="View Additional Details">
-                        <i class="fas fa-info-circle"></i> Details
+                        <i class="bi bi-eye"></i>
                     </button>
-                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="editStudent({{$student['id']}})">
-                        Edit
+                    <button type="button" class="btn btn-primary btn-sm me-1" onclick="editStudent({{$student['id']}})" title="Edit Student">
+                        <i class="bi bi-pencil"></i>
                     </button>
-                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteStudent({{$student['id']}}, '{{$student['name']}}', {{$student['roll']}})">
-                        Delete
+                    <button type="button" class="btn btn-danger btn-sm" onclick="deleteStudent({{$student['id']}}, '{{$student['name']}}', {{$student['roll']}})" title="Delete Student">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </td>
             </tr>
@@ -453,6 +471,44 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return true;
     });
+    
+    // Bulk verification functionality
+    document.getElementById('verifyAllBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to verify all students?')) {
+            const checkboxes = document.querySelectorAll('input[name="verification[]"]');
+            checkboxes.forEach(function(checkbox) {
+                checkbox.checked = true;
+            });
+            updateVerificationCount();
+        }
+    });
+    
+    document.getElementById('unverifyAllBtn').addEventListener('click', function() {
+        if (confirm('Are you sure you want to unverify all students?')) {
+            const checkboxes = document.querySelectorAll('input[name="verification[]"]');
+            checkboxes.forEach(function(checkbox) {
+                checkbox.checked = false;
+            });
+            updateVerificationCount();
+        }
+    });
+    
+    // Update verification count display
+    function updateVerificationCount() {
+        const checkboxes = document.querySelectorAll('input[name="verification[]"]');
+        const verifiedCount = document.querySelectorAll('input[name="verification[]"]:checked').length;
+        document.getElementById('verifiedCount').textContent = verifiedCount;
+    }
+    
+    // Update count on individual checkbox changes
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.name === 'verification[]') {
+            updateVerificationCount();
+        }
+    });
+    
+    // Initialize verification count on page load
+    updateVerificationCount();
 });
 </script>
 

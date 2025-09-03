@@ -62,6 +62,7 @@ Route::post('/teachers/remove-teacher', [App\Http\Controllers\TeacherController:
 Route::post('/teachers/assign-course', [App\Http\Controllers\TeacherController::class, 'assignCourse'])->middleware('adminlogin');
 Route::delete('/teachers/remove-assignment', [App\Http\Controllers\TeacherController::class, 'removeAssignment'])->middleware('adminlogin');
 Route::get('/api/teachers/{examid}', [App\Http\Controllers\TeacherController::class, 'getTeachers'])->middleware('adminlogin');
+Route::get('/export/teacher-assignments/{examid}', [App\Http\Controllers\TeacherController::class, 'exportAssignmentsCSV'])->middleware('adminlogin');
 
 // Mail management routes
 Route::get('/mail/{examid}', [App\Http\Controllers\MailController::class, 'index'])->middleware('adminlogin');

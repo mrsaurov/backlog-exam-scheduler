@@ -380,4 +380,99 @@ class TeacherController extends Controller
             return response()->json(['success' => false, 'message' => 'Error fetching teachers: ' . $e->getMessage()]);
         }
     }
+
+    /**
+     * Export course teacher assignments to CSV
+     */
+    public function exportAssignmentsCSV($examid)
+    {
+        try {
+            $exam = AvailableExam::findOrFail($examid);
+            
+            // Get courses that have verified student registrations for this exam
+            $registeredStudents = RegisteredStudent::where('examid', $examid)
+                ->where('verified', true)
+                ->get();
+            
+            $coursesWithStudents = [];
+            foreach($registeredStudents as $student) {
+                if($student->course1) $coursesWithStudents[] = $student->course1;
+                if($student->course2) $coursesWithStudents[] = $student->course2;
+                if($student->course3) $coursesWithStudents[] = $student->course3;
+                if($student->course4) $coursesWithStudents[] = $student->course4;
+                if($student->course5) $coursesWithStudents[] = $student->course5;
+            }
+            
+            $courseIds = array_unique($coursesWithStudents);
+            $courses = Course::whereIn('id', $courseIds)->orderBy('course_code')->get();
+            
+            // Get course assignments with teacher information
+            $assignments = CourseTeacherAssignment::with(['teacher', 'course'])
+                ->where('exam_id', $examid)
+                ->whereIn('course_id', $courseIds)
+                ->orderBy('course_id')
+                ->get()
+                ->groupBy('course_id');
+            
+            $filename = 'teacher_assignments_exam_' . $examid . '_' . date('Y-m-d_H-i-s') . '.csv';
+            
+            $headers = [
+                "Content-Type" => "text/csv",
+                "Content-Disposition" => "attachment; filename=\"$filename\"",
+                "Pragma" => "no-cache",
+                "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+                "Expires" => "0"
+            ];
+            
+            $callback = function() use ($courses, $assignments, $exam) {
+                $file = fopen('php://output', 'w');
+                
+                // Add header information
+                fputcsv($file, ['Course Teacher Assignments Export']);
+                fputcsv($file, ['Exam: ' . $exam->exam_name]);
+                fputcsv($file, ['Generated: ' . date('Y-m-d H:i:s')]);
+                fputcsv($file, []); // Empty row
+                
+                // CSV headers
+                fputcsv($file, [
+                    'Course Code', 
+                    'Course Title', 
+                    'Department', 
+                    'Teacher 1 Name', 
+                    'Teacher 1 Email', 
+                    'Teacher 1 Designation',
+                    'Teacher 2 Name', 
+                    'Teacher 2 Email', 
+                    'Teacher 2 Designation'
+                ]);
+                
+                foreach($courses as $course) {
+                    $courseAssignments = $assignments->get($course->id, collect());
+                    
+                    $teacher1 = $courseAssignments->first();
+                    $teacher2 = $courseAssignments->skip(1)->first();
+                    
+                    fputcsv($file, [
+                        $course->course_code,
+                        $course->course_title,
+                        $course->department,
+                        $teacher1 ? $teacher1->teacher->name : 'Not Assigned',
+                        $teacher1 ? $teacher1->teacher->email : '',
+                        $teacher1 ? $teacher1->teacher->designation : '',
+                        $teacher2 ? $teacher2->teacher->name : 'Not Assigned',
+                        $teacher2 ? $teacher2->teacher->email : '',
+                        $teacher2 ? $teacher2->teacher->designation : ''
+                    ]);
+                }
+                
+                fclose($file);
+            };
+            
+            return response()->stream($callback, 200, $headers);
+            
+        } catch (Exception $e) {
+            flash()->addError('Error exporting assignments: ' . $e->getMessage());
+            return redirect('/teachers/' . $examid);
+        }
+    }
 }

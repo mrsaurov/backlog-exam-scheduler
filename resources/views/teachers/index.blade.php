@@ -61,8 +61,8 @@
                     <div class="col-md-4">
                         <!-- Add Teacher Form -->
                         <div class="card">
-                            <div class="card-header bg-success text-white">
-                                <h5><i class="bi bi-person-plus"></i> Add New Teacher</h5>
+                            <div class="card-header bg-success text-white d-flex align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-person-plus"></i> Add New Teacher</h5>
                             </div>
                             <div class="card-body">
                                 <form method="POST" action="/teachers">
@@ -119,8 +119,8 @@
                     <div class="col-md-8">
                         <!-- Teachers List -->
                         <div class="card">
-                            <div class="card-header bg-info text-white">
-                                <h5><i class="bi bi-list"></i> Teachers List</h5>
+                            <div class="card-header bg-info text-white d-flex align-items-center">
+                                <h5 class="mb-0"><i class="bi bi-list"></i> Teachers List</h5>
                             </div>
                             <div class="card-body">
                                 @if($teachers->count() > 0)
@@ -264,9 +264,14 @@
                             <h5><i class="bi bi-diagram-3"></i> Course Teacher Assignments</h5>
                             <small>Assign up to 2 teachers per course. Teachers are sorted by department.</small>
                         </div>
-                        <button type="button" id="saveAllAssignments" class="btn btn-success btn-lg" style="display: none;">
-                            <i class="bi bi-check-circle"></i> Save All Changes
-                        </button>
+                        <div class="d-flex align-items-center gap-2">
+                            <a href="/export/teacher-assignments/{{$exam->id}}" class="btn btn-success btn-sm">
+                                <i class="bi bi-download"></i> Export CSV
+                            </a>
+                            <button type="button" id="saveAllAssignments" class="btn btn-success btn-lg" style="display: none;">
+                                <i class="bi bi-check-circle"></i> Save All Changes
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
                         <div id="assignment-alerts"></div>
