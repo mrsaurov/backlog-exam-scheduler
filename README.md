@@ -21,40 +21,50 @@ A comprehensive web application built with Laravel for managing backlog exam reg
 ## ✨ Features
 
 ### 🎯 Student Features
+
 - **Multi-Course Registration**: Register for up to 5 backlog courses per exam session
-- **Duplicate Prevention**: Client-side and server-side validation prevents selecting the same course multiple times
-- **PDF Generation**: Download registration confirmation as PDF
-- **Real-time Validation**: Dynamic form validation with instant feedback
+- **Duplicate Prevention**: Server-side checks prevent selecting the same course multiple times
+- **Deadline-aware Forms**: Registration blocked automatically after exam deadline
+- **PDF Application**: Download your submitted application as a PDF
+- **Registration Lookup**: Retrieve your application by exam and roll
+- **Exam Notices**: View active notices (with optional attachments) for each exam
 
 ### 👨‍💼 Admin Features
-- **Student Management**: View, edit, and delete student registrations
-- **Verification System**: Mark student registrations as verified/unverified
-- **Exam Creation**: Create and manage available exams
-- **Automated Scheduling**: Graph coloring algorithm for conflict-free exam scheduling
-- **Enhanced UI/UX**: Modern, responsive interface with optimized animations
+
+- **Exam Management**: Create, update, delete exams; assign courses per exam
+- **Student Management**: View, edit, verify/unverify, and delete registrations
+- **Scheduling**: Generate conflict-free exam days via graph coloring (uses only odd-numbered courses per policy)
+- **CSV Exports**: Export courses with counts, course dependencies, day-wise schedule, and teacher assignments
+- **Notice Management**: Create, update, delete notices; attach files; toggle active/inactive; public file preview
+- **Teacher Management**: Add/edit/delete teachers; assign up to two teachers per course (per exam)
+- **Bulk/Targeted Email**: Create templates and send general or course-specific emails to assigned teachers (with attachments)
 
 ### 🔧 Technical Features
-- **Graph Coloring Algorithm**: Intelligent scheduling to prevent exam time conflicts
-- **Dynamic Course Selection**: Prevents duplicate course selection across all forms
-- **Responsive Design**: Mobile-friendly interface built with Bootstrap 4
-- **Flash Notifications**: User feedback with customizable animation durations
-- **Database Migrations**: Version-controlled database schema changes
+
+- **Graph Coloring Algorithm**: Simple greedy coloring to avoid course conflicts among verified students (odd-numbered courses)
+- **Data Export**: Multiple CSV endpoints for courses, dependencies, schedule, and teacher assignments
+- **Flash Notifications**: User feedback via php-flasher
+- **PDF Generation**: dompdf for application PDFs
+- **Migrations & Seeders**: Versioned schema and optional seed data
 
 ## 🚀 Installation
 
 ### Prerequisites
+
 - PHP 8.0 or higher
 - Composer
 - Node.js & NPM (for asset compilation)
 - SQLite (default) or MySQL/PostgreSQL
 
 ### Step 1: Clone the Repository
+
 ```bash
 git clone https://github.com/your-username/backlog-exam-scheduler.git
 cd backlog-exam-scheduler
 ```
 
 ### Step 2: Install Dependencies
+
 ```bash
 # Install PHP dependencies
 composer install
@@ -64,6 +74,7 @@ npm install
 ```
 
 ### Step 3: Environment Configuration
+
 ```bash
 # Copy environment file
 cp .env.example .env
@@ -73,6 +84,7 @@ php artisan key:generate
 ```
 
 ### Step 4: Database Setup
+
 ```bash
 # Create SQLite database (default)
 touch database/database.sqlite
@@ -85,6 +97,7 @@ php artisan db:seed
 ```
 
 ### Step 5: Asset Compilation
+
 ```bash
 # Compile assets for development
 npm run dev
@@ -94,6 +107,7 @@ npm run prod
 ```
 
 ### Step 6: Start the Application
+
 ```bash
 # Start development server
 php artisan serve
@@ -104,6 +118,7 @@ php artisan serve
 ## ⚙️ Configuration
 
 ### Database Configuration
+
 Edit `.env` file for database settings:
 
 ```env
@@ -131,8 +146,12 @@ DB_PASSWORD=your_password
    - Submit registration
 
 2. **Download Confirmation**:
-   - After successful registration, download PDF confirmation
-   - PDF contains all registered course details
+   - After successful registration, download your application as PDF
+   - Or use “Check Registration” with your roll to retrieve the PDF
+
+3. **Exam Notices**:
+   - Browse notices for a specific exam
+   - Open attached files (PDF/images/docs) in the browser
 
 ### For Administrators
 
@@ -142,53 +161,75 @@ DB_PASSWORD=your_password
 
 2. **Manage Exams**:
    - Create new exam sessions
-   - Set exam dates and details
+   - Set name, department, series, and deadline
+   - Map eligible courses to the exam
 
 3. **Student Management**:
-   - View all registered students
-   - Edit student registrations via modal interface
-   - Delete registrations with confirmation
-   - Mark students as verified/unverified
+   - View all registered students (sortable by roll)
+   - Edit, verify/unverify, and delete registrations
+   - Prevent duplicate courses and duplicate rolls per exam
 
-4. **Schedule Generation**:
-   - Use graph coloring algorithm to generate conflict-free schedules
-   - View and export exam timetables
+4. **Schedule & Exports**:
+   - Generate conflict-free “day-wise” schedule via graph coloring
+   - Export CSVs: course list with counts and rolls, dependencies, schedule
+
+5. **Notices**:
+   - Create, edit, delete notices; toggle active state
+   - Upload a notice file; public inline preview route is available
+
+6. **Teachers & Assignments**:
+   - Manage teachers (name, email, phone, designation, department)
+   - Assign up to two teachers per course (per exam)
+   - Export teacher assignments to CSV
+
+7. **Mailing**:
+   - Create general/customized templates or use predefined ones
+   - Send general mail to all assigned teachers or customized based on selected courses
+   - Optional deadline placeholders and attachments
 
 ## 🏗️ System Architecture
 
 ### Database Schema
 
-#### Tables:
+#### Tables
+
 - **users**: Admin authentication
 - **available_exams**: Exam session management
 - **courses**: Course catalog
 - **registered_students**: Student registrations (supports 5 courses)
 - **course_exam_mappings**: Course-exam relationships
 
-### Key Models:
+### Key Models
+
 - `User`: Admin authentication
 - `AvailableExam`: Exam sessions
 - `Course`: Course information
 - `RegisteredStudent`: Student registrations
 - `CourseExamMapping`: Course-exam relationships
 
-### Controllers:
-- `HomeController`: Student registration and PDF generation
-- `AdminController`: Admin panel functionality
-- `AuthController`: Authentication management
+### Controllers
+
+- `HomeController`: Home, registration, PDF download, exam CRUD, notices (public)
+- `AdminController`: Students, courses, schedule/exports, notices (admin)
+- `TeacherController`: Teachers, course-teacher assignments, exports
+- `MailController`: Mail templates, previews, general/customized sends
 
 ## 🎨 Graph Coloring Algorithm
 
 The system uses a graph coloring algorithm to schedule exams without conflicts:
 
-### How it Works:
+### How it Works
+
 1. **Graph Construction**: Create conflict graph where courses taken by the same student are connected
 2. **Vertex Ordering**: Sort courses by conflict degree (highest first)
 3. **Coloring**: Assign time slots ensuring no adjacent courses have the same color
 4. **Scheduling**: Map colors to actual time slots
 
-### Example:
-```
+Note: By department policy, only odd-numbered courses (based on the numeric part of course code) are considered for scheduling and dependency graphs. Counts and student lists can include all courses where relevant.
+
+### Example
+
+```text
 Student A: [Course1, Course2, Course3]
 Student B: [Course1, Course4]
 Student C: [Course2, Course4]
@@ -205,7 +246,8 @@ Course3: Time Slot 1 (no conflict with Course1)
 Course4: Time Slot 3
 ```
 
-### Time Slots:
+### Time Slots
+
 - Slot 1: 9:00 AM - 12:00 PM (Day 1)
 - Slot 2: 1:00 PM - 4:00 PM (Day 1)
 - Slot 3: 9:00 AM - 12:00 PM (Day 2)
@@ -215,6 +257,7 @@ Course4: Time Slot 3
 ## 🧪 Testing
 
 Run the test suite:
+
 ```bash
 # Run all tests
 php artisan test
@@ -228,15 +271,16 @@ php artisan test --coverage
 
 ## 📦 Dependencies
 
-### PHP Packages:
+### PHP Packages
+
 - `laravel/framework`: Core framework
 - `barryvdh/laravel-dompdf`: PDF generation
 - `php-flasher/flasher-laravel`: Flash notifications
 
-### JavaScript Packages:
-- `bootstrap`: UI framework
-- `jquery`: DOM manipulation
-- `fancyTable`: Enhanced table functionality
+### JavaScript (build/dev)
+
+- `vite`, `laravel-vite-plugin`: Asset build
+- `axios`, `lodash`, `postcss`: Utilities and tooling
 
 ## 🤝 Contributing
 
@@ -248,7 +292,8 @@ We welcome contributions! Please follow these steps:
 4. Push to the branch (`git push origin feature/new-feature`)
 5. Create a Pull Request
 
-### Development Guidelines:
+### Development Guidelines
+
 - Follow PSR-12 coding standards
 - Write tests for new features
 - Update documentation for API changes
