@@ -314,6 +314,7 @@ class AdminController extends Controller
             array_push($ret[$result->$v], $v);
         }
         $coursemap = Course::all()->wherein('id',$vertex)->pluck('course_code','id')->toArray();
+        $courseTitles = Course::all()->wherein('id',$vertex)->pluck('course_title','id')->toArray();
         $allCoursemap = Course::all()->wherein('id',$allCourses)->pluck('course_code','id')->toArray();
         $allCourseTitles = Course::all()->wherein('id',$allCourses)->pluck('course_title','id')->toArray();
         
@@ -340,6 +341,7 @@ class AdminController extends Controller
             'vertexcount'=>$vertexcount,
             'result'=>$ret,
             'coursemap'=>$coursemap,
+            'courseTitles'=>$courseTitles,
             'courseStudents'=>$courseStudents,
             'allCoursesCount'=>$allCoursesCount,
             'allCoursemap'=>$allCoursemap,
@@ -526,6 +528,7 @@ class AdminController extends Controller
         $edge = (object)[];
         $result = (object)[];
         $vertex = [];
+        $courseStudents = []; // Array to store roll numbers for each course
         
         foreach($allstd as $std)
         {
@@ -542,6 +545,38 @@ class AdminController extends Controller
                 array_push($vertex, $std['course5']);
         }
         $vertex = array_unique($vertex);
+        
+        // Initialize courseStudents array for each course
+        foreach($vertex as $v)
+        {
+            $courseStudents[$v] = [];
+        }
+        
+        // Collect roll numbers for each course
+        foreach($allstd as $std)
+        {
+            $studentCourses = [];
+            // Only collect roll numbers for odd-numbered courses
+            if($std['course1'] && $this->isOddNumberedCourse($std['course1'])) $studentCourses[] = $std['course1'];
+            if($std['course2'] && $this->isOddNumberedCourse($std['course2'])) $studentCourses[] = $std['course2'];
+            if($std['course3'] && $this->isOddNumberedCourse($std['course3'])) $studentCourses[] = $std['course3'];
+            if($std['course4'] && $this->isOddNumberedCourse($std['course4'])) $studentCourses[] = $std['course4'];
+            if($std['course5'] && $this->isOddNumberedCourse($std['course5'])) $studentCourses[] = $std['course5'];
+            
+            foreach($studentCourses as $courseId)
+            {
+                if(!in_array($std['roll'], $courseStudents[$courseId]))
+                {
+                    $courseStudents[$courseId][] = $std['roll'];
+                }
+            }
+        }
+        
+        // Sort roll numbers in ascending order for each course
+        foreach($courseStudents as $courseId => $rolls)
+        {
+            sort($courseStudents[$courseId]);
+        }
         
         foreach($vertex as $v)
         {
@@ -617,6 +652,7 @@ class AdminController extends Controller
         }
         
         $coursemap = Course::all()->wherein('id',$vertex)->pluck('course_code','id')->toArray();
+        $courseTitles = Course::all()->wherein('id',$vertex)->pluck('course_title','id')->toArray();
         
         $filename = 'schedule_exam_' . $examid . '_' . date('Y-m-d_H-i-s') . '.csv';
         
@@ -628,18 +664,17 @@ class AdminController extends Controller
             "Expires" => "0"
         ];
         
-        $callback = function() use ($ret, $coursemap) {
+        $callback = function() use ($ret, $coursemap, $courseTitles, $courseStudents) {
             $file = fopen('php://output', 'w');
-            fputcsv($file, ['Date No.', 'Exams']);
+            fputcsv($file, ['Date No.', 'Course Code and Name', 'Student Rolls']);
             
             $dayCounter = 1;
             foreach($ret as $days) {
-                $examCodes = [];
                 foreach($days as $exam) {
-                    $examCodes[] = $coursemap[$exam];
+                    $courseCodeAndName = $coursemap[$exam] . ' (' . $courseTitles[$exam] . ')';
+                    $studentRolls = isset($courseStudents[$exam]) ? implode(', ', $courseStudents[$exam]) : '';
+                    fputcsv($file, [$dayCounter, $courseCodeAndName, $studentRolls]);
                 }
-                $examString = implode(', ', $examCodes);
-                fputcsv($file, [$dayCounter, $examString]);
                 $dayCounter++;
             }
             

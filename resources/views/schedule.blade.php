@@ -82,19 +82,28 @@
             <div class="table-responsive">
                 <table class="table table-striped">
                     <thead class="table-dark">
-                        <th>Date no.</th>
-                        <th>Exam(s)</th>
+                        <th>Date No.</th>
+                        <th>Course Code and Name</th>
+                        <th>Student Rolls</th>
                     </thead>
                     <tbody>
                         @foreach($result as $days)
-                            <tr>
-                                <td>{{$loop->iteration}}</td>
-                                <td>
-                                    @foreach($days as $exam)
-                                        {{$coursemap[$exam]}}&nbsp;&nbsp;
-                                    @endforeach
-                                </td>
-                            </tr>
+                            @foreach($days as $examIndex => $exam)
+                                <tr>
+                                    @if($examIndex == 0)
+                                        <td rowspan="{{count($days)}}">{{$loop->parent->iteration}}</td>
+                                    @endif
+                                    <td>
+                                        {{$coursemap[$exam]}}<br>
+                                        ({{$courseTitles[$exam]}})
+                                    </td>
+                                    <td>
+                                        @if(isset($courseStudents[$exam]))
+                                            {{ implode(', ', $courseStudents[$exam]) }}
+                                        @endif
+                                    </td>
+                                </tr>
+                            @endforeach
                         @endforeach
                     </tbody>
                 </table>
