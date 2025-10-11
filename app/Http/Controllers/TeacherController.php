@@ -44,8 +44,11 @@ class TeacherController extends Controller
         $courses = Course::whereIn('id', $courseIds)->orderBy('course_code')->get();
         
         // Get all teachers sorted by department then by designation hierarchy then by name
-        $teachers = Teacher::with(['courseAssignments' => function($query) use ($examid) {
-            $query->where('exam_id', $examid)->with('course');
+        // Only load course assignments for courses that have verified student registrations
+        $teachers = Teacher::with(['courseAssignments' => function($query) use ($examid, $courseIds) {
+            $query->where('exam_id', $examid)
+                  ->whereIn('course_id', $courseIds)
+                  ->with('course');
         }])->get();
         
         // Sort teachers by department, then by designation hierarchy, then by name
@@ -76,8 +79,10 @@ class TeacherController extends Controller
         });
         
         // Get all course-teacher assignments for this exam
+        // Only include assignments for courses that have verified student registrations
         $assignments = CourseTeacherAssignment::with(['course', 'teacher'])
             ->where('exam_id', $examid)
+            ->whereIn('course_id', $courseIds)
             ->orderBy('created_at', 'desc')
             ->get();
         
@@ -371,8 +376,26 @@ class TeacherController extends Controller
     public function getTeachers($examid)
     {
         try {
-            $teachers = Teacher::with(['courseAssignments' => function($query) use ($examid) {
-                $query->where('exam_id', $examid)->with('course');
+            // Get courses that have verified student registrations (same logic as index method)
+            $registeredStudents = RegisteredStudent::where('examid', $examid)
+                ->where('verified', true)
+                ->get();
+            
+            $coursesWithStudents = [];
+            foreach($registeredStudents as $student) {
+                if($student->course1) $coursesWithStudents[] = $student->course1;
+                if($student->course2) $coursesWithStudents[] = $student->course2;
+                if($student->course3) $coursesWithStudents[] = $student->course3;
+                if($student->course4) $coursesWithStudents[] = $student->course4;
+                if($student->course5) $coursesWithStudents[] = $student->course5;
+            }
+            $courseIds = array_unique($coursesWithStudents);
+            
+            // Only load course assignments for courses that have verified student registrations
+            $teachers = Teacher::with(['courseAssignments' => function($query) use ($examid, $courseIds) {
+                $query->where('exam_id', $examid)
+                      ->whereIn('course_id', $courseIds)
+                      ->with('course');
             }])->orderBy('name')->get();
 
             return response()->json(['success' => true, 'teachers' => $teachers]);

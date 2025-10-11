@@ -8,6 +8,7 @@ use App\Models\AvailableExam;
 use App\Models\Course;
 use App\Models\CourseExamMapping;
 use App\Models\CourseTeacherAssignment;
+use App\Models\RegisteredStudent;
 use App\Models\Teacher;
 use Illuminate\Http\Request;
 use Exception;
@@ -81,6 +82,26 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
 <strong>Head</strong><br>
 Department of Computer Science & Engineering<br>
 Rajshahi University of Engineering & Technology (RUET)</p>'
+            ],
+            'answer_script' => [
+                'name' => 'Submit Answer Script',
+                'subject' => 'Submission of Evaluated Answer Scripts for [Exam Name]',
+                'content' => '<p>Dear [Teacher\'s Name],</p>
+
+<p>You are kindly requested to submit the evaluated answer scripts for the following course(s) in <strong>[Exam Name]</strong>:</p>
+
+<div class="course-list">
+[Course List]
+</div>
+
+<p>Please ensure that the evaluated answer scripts are submitted to the department office on or before <strong>[Deadline Date]</strong>. Timely submission is essential for smooth completion of examination process.</p>
+
+<p>Your cooperation in this regard will be highly appreciated.</p>
+
+<p>Sincerely,<br>
+<strong>Head</strong><br>
+Department of Computer Science & Engineering<br>
+Rajshahi University of Engineering & Technology (RUET)</p>'
             ]
         ];
     }
@@ -93,9 +114,25 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
         $exam = AvailableExam::findOrFail($examid);
         $mailTemplates = MailTemplate::where('exam_id', $examid)->orderBy('created_at', 'desc')->get();
         
-        // Get courses mapped to this exam
-        $examCourseIds = CourseExamMapping::where('examid', $examid)->pluck('courseid')->toArray();
-        $courses = Course::whereIn('id', $examCourseIds)->get();
+        // Get courses that have verified student registrations (same logic as TeacherController)
+        $registeredStudents = RegisteredStudent::where('examid', $examid)
+            ->where('verified', true)
+            ->get();
+        
+        $coursesWithStudents = [];
+        foreach($registeredStudents as $student) {
+            if($student->course1) $coursesWithStudents[] = $student->course1;
+            if($student->course2) $coursesWithStudents[] = $student->course2;
+            if($student->course3) $coursesWithStudents[] = $student->course3;
+            if($student->course4) $coursesWithStudents[] = $student->course4;
+            if($student->course5) $coursesWithStudents[] = $student->course5;
+        }
+        
+        // Get unique course IDs that have verified student registrations
+        $courseIds = array_unique($coursesWithStudents);
+        
+        // Load only courses that have verified student registrations
+        $courses = Course::whereIn('id', $courseIds)->orderBy('course_code')->get();
         
         // Get predefined templates
         $predefinedTemplates = $this->getPredefinedTemplates();
@@ -115,9 +152,25 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
     {
         $exam = AvailableExam::findOrFail($examid);
         
-        // Get courses mapped to this exam
-        $examCourseIds = CourseExamMapping::where('examid', $examid)->pluck('courseid')->toArray();
-        $courses = Course::whereIn('id', $examCourseIds)->get();
+        // Get courses that have verified student registrations (same logic as index method)
+        $registeredStudents = RegisteredStudent::where('examid', $examid)
+            ->where('verified', true)
+            ->get();
+        
+        $coursesWithStudents = [];
+        foreach($registeredStudents as $student) {
+            if($student->course1) $coursesWithStudents[] = $student->course1;
+            if($student->course2) $coursesWithStudents[] = $student->course2;
+            if($student->course3) $coursesWithStudents[] = $student->course3;
+            if($student->course4) $coursesWithStudents[] = $student->course4;
+            if($student->course5) $coursesWithStudents[] = $student->course5;
+        }
+        
+        // Get unique course IDs that have verified student registrations
+        $courseIds = array_unique($coursesWithStudents);
+        
+        // Load only courses that have verified student registrations
+        $courses = Course::whereIn('id', $courseIds)->orderBy('course_code')->get();
         
         if ($templateid == 0) {
             $template = (object)[
@@ -214,18 +267,30 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
         
         // Get recipients based on template type
         if ($template->type === 'general') {
-            // Get all teachers assigned to any course in this exam
-            $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template) {
-                $query->where('exam_id', $template->exam_id);
-            })->get();
-        } else {
-            // Get teachers assigned to specific courses
+            // Get all teachers assigned to courses with verified students in this exam
             $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template) {
                 $query->where('exam_id', $template->exam_id)
-                      ->whereIn('course_id', $template->assigned_courses);
+                      ->whereHas('course.registeredStudents', function($q) use ($template) {
+                          $q->where('exam_id', $template->exam_id)
+                            ->where('verification_status', 'verified');
+                      });
+            })->get();
+        } else {
+            // Get teachers assigned to specific courses with verified students
+            $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template) {
+                $query->where('exam_id', $template->exam_id)
+                      ->whereIn('course_id', $template->assigned_courses)
+                      ->whereHas('course.registeredStudents', function($q) use ($template) {
+                          $q->where('exam_id', $template->exam_id)
+                            ->where('verification_status', 'verified');
+                      });
             })->with(['courseAssignments' => function($query) use ($template) {
                 $query->where('exam_id', $template->exam_id)
                       ->whereIn('course_id', $template->assigned_courses)
+                      ->whereHas('course.registeredStudents', function($q) use ($template) {
+                          $q->where('exam_id', $template->exam_id)
+                            ->where('verification_status', 'verified');
+                      })
                       ->with('course');
             }])->get();
         }
@@ -268,9 +333,13 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                 }
             }
             
-            // Get all teachers assigned to any course in this exam
+            // Get all teachers assigned to courses with verified students in this exam
             $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid) {
-                $query->where('exam_id', $examid);
+                $query->where('exam_id', $examid)
+                      ->whereHas('course.registeredStudents', function($q) use ($examid) {
+                          $q->where('exam_id', $examid)
+                            ->where('verification_status', 'verified');
+                      });
             })->get();
 
             $sentCount = 0;
@@ -338,13 +407,13 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
     {
         // Base validation rules
         $rules = [
-            'template_type' => 'required|in:ct_marks,sessional_marks,question_manuscript',
+            'template_type' => 'required|in:ct_marks,sessional_marks,question_manuscript,answer_script',
             'courses' => 'required|array|min:1',
             'courses.*' => 'exists:courses,id',
         ];
         
         // Make deadline required for specific templates
-        $templatesRequiringDeadline = ['ct_marks', 'sessional_marks', 'question_manuscript'];
+        $templatesRequiringDeadline = ['ct_marks', 'sessional_marks', 'question_manuscript', 'answer_script'];
         if (in_array($request->template_type, $templatesRequiringDeadline)) {
             $rules['deadline'] = 'required|date';
         } else {
@@ -359,15 +428,74 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
             $predefinedTemplates = $this->getPredefinedTemplates();
             $template = $predefinedTemplates[$request->template_type];
 
-            // Get teachers assigned to the selected courses
-            $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid, $request) {
-                $query->where('exam_id', $examid)
-                      ->whereIn('course_id', $request->courses);
-            })->with(['courseAssignments' => function($query) use ($examid, $request) {
-                $query->where('exam_id', $examid)
-                      ->whereIn('course_id', $request->courses)
-                      ->with('course');
-            }])->get();
+            // Get courses that have verified student registrations (same logic as TeacherController)
+            $registeredStudents = RegisteredStudent::where('examid', $examid)
+                ->where('verified', true)
+                ->get();
+            
+            $coursesWithStudents = [];
+            foreach($registeredStudents as $student) {
+                if($student->course1) $coursesWithStudents[] = $student->course1;
+                if($student->course2) $coursesWithStudents[] = $student->course2;
+                if($student->course3) $coursesWithStudents[] = $student->course3;
+                if($student->course4) $coursesWithStudents[] = $student->course4;
+                if($student->course5) $coursesWithStudents[] = $student->course5;
+            }
+            $activeCoursesIds = array_unique($coursesWithStudents);
+            
+            // Filter selected courses to only include those with verified student registrations
+            $validCourseIds = array_intersect($request->courses, $activeCoursesIds);
+            
+            if (empty($validCourseIds)) {
+                return redirect('/mail/' . $examid)->with('error', 'No valid courses selected. Selected courses must have verified student registrations.');
+            }
+
+            // Define which templates should only go to Teacher 1
+            $teacher1OnlyTemplates = ['ct_marks', 'sessional_marks'];
+            // Templates that go to both teachers: 'question_manuscript', 'answer_script'
+            
+            $teachers = collect();
+            
+            if (in_array($request->template_type, $teacher1OnlyTemplates)) {
+                // Get only Teacher 1 (first assignment) for each course that has verified students
+                $teacher1Assignments = \DB::table('course_teacher_assignments as cta1')
+                    ->select('cta1.*')
+                    ->where('cta1.exam_id', $examid)
+                    ->whereIn('cta1.course_id', $validCourseIds)
+                    ->whereNotExists(function($query) use ($examid) {
+                        $query->select(\DB::raw(1))
+                              ->from('course_teacher_assignments as cta2')
+                              ->whereRaw('cta2.course_id = cta1.course_id')
+                              ->where('cta2.exam_id', $examid)
+                              ->whereRaw('cta2.id < cta1.id');
+                    })
+                    ->pluck('teacher_id')
+                    ->unique();
+                
+                $teachers = Teacher::whereIn('id', $teacher1Assignments)
+                    ->with(['courseAssignments' => function($query) use ($examid, $validCourseIds) {
+                        $query->where('exam_id', $examid)
+                              ->whereIn('course_id', $validCourseIds)
+                              ->whereIn('id', function($subquery) use ($examid) {
+                                  $subquery->select(\DB::raw('MIN(id)'))
+                                           ->from('course_teacher_assignments')
+                                           ->where('exam_id', $examid)
+                                           ->groupBy('course_id');
+                              })
+                              ->with('course');
+                    }])->get();
+            } else {
+                // Get both Teacher 1 and Teacher 2 for templates like question_manuscript and answer_script
+                // but only for courses with verified student registrations
+                $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid, $validCourseIds) {
+                    $query->where('exam_id', $examid)
+                          ->whereIn('course_id', $validCourseIds);
+                })->with(['courseAssignments' => function($query) use ($examid, $validCourseIds) {
+                    $query->where('exam_id', $examid)
+                          ->whereIn('course_id', $validCourseIds)
+                          ->with('course');
+                }])->get();
+            }
 
             $sentCount = 0;
             $failedCount = 0;

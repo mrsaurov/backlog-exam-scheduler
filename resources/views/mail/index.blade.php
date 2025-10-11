@@ -393,7 +393,7 @@
         $(document).ready(function() {
             // Template preview functionality
             const templates = @json($predefinedTemplates);
-            const templatesRequiringDeadline = ['ct_marks', 'sessional_marks', 'question_manuscript'];
+            const templatesRequiringDeadline = ['ct_marks', 'sessional_marks', 'question_manuscript', 'answer_script'];
             
             $('#template_type').on('change', function() {
                 const templateKey = $(this).val();
