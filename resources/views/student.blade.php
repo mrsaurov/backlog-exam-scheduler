@@ -79,13 +79,16 @@
                                 <div class="tag-list">
                                     @foreach(['course1', 'course2', 'course3', 'course4', 'course5'] as $courseField)
                                         @if($student[$courseField])
-                                            @php $courseState = $student['course_states'][$courseField] ?? 'offered'; @endphp
+                                            @php
+                                                $courseState = $student['course_states'][$courseField] ?? 'offered';
+                                                $courseTitle = $student['course_titles'][$courseField] ?? '';
+                                            @endphp
                                             @if($courseState === 'removed')
-                                                <span class="tag tag-warning" title="No longer offered in this exam">{{$student[$courseField]}}</span>
+                                                <span class="tag tag-warning course-chip" data-bs-toggle="tooltip" title="{{$courseTitle}} (no longer offered in this exam)">{{$student[$courseField]}}</span>
                                             @elseif($courseState === 'deleted')
-                                                <span class="tag tag-warning" title="This course has been deleted">{{$student[$courseField]}}</span>
+                                                <span class="tag tag-warning course-chip" data-bs-toggle="tooltip" title="This course has been deleted">{{$student[$courseField]}}</span>
                                             @else
-                                                <span class="tag">{{$student[$courseField]}}</span>
+                                                <span class="tag course-chip" data-bs-toggle="tooltip" title="{{$courseTitle}}">{{$student[$courseField]}}</span>
                                             @endif
                                         @endif
                                     @endforeach

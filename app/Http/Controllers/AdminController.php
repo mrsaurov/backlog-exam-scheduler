@@ -53,16 +53,19 @@ class AdminController extends Controller
 
         $offered = array_flip($examCourseIds);
         $coursemap = [];
+        $coursetitles = [];
         foreach($courses->concat($removedCourses) as $crs)
         {
-            // Use only course_code for table display
+            // Use only course_code for table display; the title is shown when hovering the code
             $coursemap[$crs->id] = $crs->course_code;
+            $coursetitles[$crs->id] = $crs->course_title;
         }
         $stds = [];
         foreach($students as $std)
         {
             // offered | removed (no longer offered in this exam) | deleted (course no longer exists)
             $std['course_states'] = [];
+            $std['course_titles'] = [];
 
             foreach($courseFields as $field)
             {
@@ -81,6 +84,7 @@ class AdminController extends Controller
                     else
                     {
                         $std[$field] = $coursemap[$courseId];
+                        $std['course_titles'][$field] = $coursetitles[$courseId];
                         $std['course_states'][$field] = isset($offered[$courseId]) ? 'offered' : 'removed';
                     }
                 }

@@ -78,7 +78,7 @@
                                     @if($teacher->courseAssignments->count() > 0)
                                         <div class="tag-list">
                                             @foreach($teacher->courseAssignments as $assignment)
-                                                <span class="tag" title="{{$assignment->course->course_title}}">{{$assignment->course->course_code}}</span>
+                                                <span class="tag course-chip" data-bs-toggle="tooltip" title="{{$assignment->course->course_title}}">{{$assignment->course->course_code}}</span>
                                             @endforeach
                                         </div>
                                     @else

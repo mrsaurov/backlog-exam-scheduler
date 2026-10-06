@@ -141,7 +141,7 @@
                                     @if(count($edge->$v) > 0)
                                     <div class="tag-list">
                                         @foreach($edge->$v as $e)
-                                            <span class="tag">{{$coursemap[$e]}}</span>
+                                            <span class="tag course-chip" data-bs-toggle="tooltip" title="{{$courseTitles[$e] ?? ''}}">{{$coursemap[$e]}}</span>
                                         @endforeach
                                     </div>
                                     @else

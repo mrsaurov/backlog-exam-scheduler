@@ -1,6 +1,7 @@
 /*
  * Shared behaviour for every page: one styled dialog used for
- * confirmations and short notices instead of browser pop-ups.
+ * confirmations and short notices instead of browser pop-ups, and
+ * floating labels for elements marked data-bs-toggle="tooltip".
  *
  *   confirmAction({ title, message, confirmLabel, danger }, onConfirm)
  *   showNotice(message, title)
@@ -131,6 +132,18 @@
         }
         window.submitForm(form);
     }
+
+    // Floating labels, used by course code chips to show the course title.
+    // Delegated from the body so chips in hidden tabs and filtered rows work too.
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.bootstrap && bootstrap.Tooltip) {
+            new bootstrap.Tooltip(document.body, {
+                selector: '[data-bs-toggle="tooltip"]',
+                placement: 'top',
+                delay: { show: 100, hide: 0 }
+            });
+        }
+    });
 
     // Exam section tabs scroll sideways on small screens: keep the current
     // tab in view and mark the strip while tabs are hidden to the right.

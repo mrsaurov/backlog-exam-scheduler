@@ -54,7 +54,7 @@
                             $course = App\Models\Course::find($courseId);
                         @endphp
                         @if($course)
-                            <span class="tag" title="{{$course->course_title}}">{{$course->course_code}}</span>
+                            <span class="tag course-chip" data-bs-toggle="tooltip" title="{{$course->course_title}}">{{$course->course_code}}</span>
                         @endif
                     @endforeach
                 </div>
@@ -77,7 +77,7 @@
                             @if($template->type === 'customized' && $recipient->courseAssignments->count() > 0)
                                 <div class="tag-list mt-1">
                                     @foreach($recipient->courseAssignments as $assignment)
-                                        <span class="tag">{{$assignment->course->course_code}}</span>
+                                        <span class="tag course-chip" data-bs-toggle="tooltip" title="{{$assignment->course->course_title}}">{{$assignment->course->course_code}}</span>
                                     @endforeach
                                 </div>
                             @endif

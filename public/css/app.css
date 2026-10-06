@@ -857,6 +857,32 @@ label {
     white-space: nowrap;
 }
 
+/* Course code chips show the course title in a floating label on hover */
+.course-chip {
+    cursor: default;
+    transition: background-color .12s ease;
+}
+
+.course-chip:hover {
+    background: #dfe3ea;
+}
+
+.course-chip.tag-warning:hover {
+    background: #f8e6c0;
+}
+
+.tooltip {
+    --bs-tooltip-bg: var(--ink);
+    --bs-tooltip-color: #fff;
+    --bs-tooltip-opacity: 1;
+    --bs-tooltip-border-radius: var(--radius-sm);
+    --bs-tooltip-padding-x: .65rem;
+    --bs-tooltip-padding-y: .4rem;
+    --bs-tooltip-font-size: .8125rem;
+    --bs-tooltip-max-width: 280px;
+    font-family: var(--font);
+}
+
 .tag-warning {
     background: var(--warning-wash);
     color: var(--warning);

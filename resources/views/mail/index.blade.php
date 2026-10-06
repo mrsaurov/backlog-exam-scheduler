@@ -109,7 +109,7 @@
                                             $course = $courses->where('id', $courseId)->first();
                                         @endphp
                                         @if($course)
-                                            <span class="tag">{{$course->course_code}}</span>
+                                            <span class="tag course-chip" data-bs-toggle="tooltip" title="{{$course->course_title}}">{{$course->course_code}}</span>
                                         @endif
                                     @endforeach
                                 @endif
