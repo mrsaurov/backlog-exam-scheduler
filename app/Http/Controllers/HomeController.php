@@ -69,10 +69,14 @@ class HomeController extends Controller
             'name' => 'required|string|max:250',
             'roll' => 'required|integer|min:1',
             'registration' => 'required|integer|min:1',
+            'contact_no' => ['required', 'string', 'regex:/^(\+?88)?01[3-9][0-9]{8}$/'],
             'examid' => 'required|integer|exists:available_exams,id',
             'course1' => 'required|integer|min:1',
             'last_appeared_exam' => 'required|string|max:255',
             'backlogged_subjects' => 'required|string'
+        ], [
+            'contact_no.required' => 'Contact No. is required.',
+            'contact_no.regex' => 'Contact No. must be a valid mobile number (e.g. 01712345678).'
         ]);
 
         $examid = $request->input('examid');
@@ -94,6 +98,7 @@ class HomeController extends Controller
             'name' => $name,
             'roll' => $roll,
             'registration' => $reg,
+            'contact_no' => $request->input('contact_no'),
             'last_appeared_exam' => $lastAppearedExam,
             'backlogged_subjects' => $backloggedSubjects
         ];

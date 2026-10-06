@@ -774,6 +774,7 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'roll' => 'required|integer|min:1',
             'registration' => 'required|integer|min:1',
+            'contact_no' => ['nullable', 'string', 'regex:/^(\+?88)?01[3-9][0-9]{8}$/'],
             'course1' => 'required|integer|min:1'
         ]);
         
@@ -802,6 +803,7 @@ class AdminController extends Controller
                     'name' => $name,
                     'roll' => $roll,
                     'registration' => $registration,
+                    'contact_no' => $req->input('contact_no'),
                     'course1' => $course1,
                     'course2' => $course2 == 0 ? null : $course2,
                     'course3' => $course3 == 0 ? null : $course3,

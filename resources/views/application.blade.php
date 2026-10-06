@@ -4,14 +4,19 @@
             @page { margin: 80px; }
             table {
                 width: 100%;
+                border-collapse: collapse;
             }
-            tr {
-                border: solid;
-                border-color: black;
+            th, td {
+                border: 1px solid black;
+                padding: 5px 8px;
+                text-align: left;
             }
-            td {
-                border: solid;
-                border-color: black;
+            th.sl, td.sl {
+                width: 60px;
+                text-align: center;
+            }
+            th.code {
+                width: 130px;
             }
             .div-table {
                 display: table;         
@@ -49,13 +54,13 @@
             <table>
                 <tbody>
                     <tr>
-                        <td>SL. No.</td>
-                        <td>Course Code</td>
-                        <td>Course Title</td>
+                        <th class="sl">SL. No.</th>
+                        <th class="code">Course Code</th>
+                        <th>Course Title</th>
                     </tr>
                     @foreach($courses as $course)
                     <tr>
-                        <td>{{$loop->iteration}}</td>
+                        <td class="sl">{{$loop->iteration}}</td>
                         <td>{{$course->course_code}}</td>
                         <td>{{$course->course_title}}</td>
                     </tr>
@@ -75,7 +80,8 @@
             <br>
             <p>{{$student['name']}}<br>
             Roll no.: {{$student['roll']}}<br>
-            Registration No.: {{$student['registration']}}</p>
+            Registration No.: {{$student['registration']}}<br>
+            Contact No.: {{$student['contact_no'] ?? ''}}</p>
         </div>
     </body>
 </html>

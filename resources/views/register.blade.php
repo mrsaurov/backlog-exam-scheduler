@@ -36,6 +36,10 @@
             <input type="number" class="form-control" name="registration" id="registration" placeholder="Enter your registration number" value="{{ old('registration') }}" min="1" required>
         </div>
         <div class="form-group">
+            <label for="contact_no">Contact No.:</label>
+            <input type="tel" class="form-control" name="contact_no" id="contact_no" placeholder="ex: 01712345678" value="{{ old('contact_no') }}" pattern="(\+?88)?01[3-9][0-9]{8}" maxlength="14" title="Enter a valid mobile number, e.g. 01712345678" required>
+        </div>
+        <div class="form-group">
             <label for="last_appeared_exam">Last Appeared Exam:</label>
             <input type="text" class="form-control" name="last_appeared_exam" id="last_appeared_exam" placeholder="ex: 4th Year Backlog 2023" value="{{ old('last_appeared_exam') }}" required>
         </div>

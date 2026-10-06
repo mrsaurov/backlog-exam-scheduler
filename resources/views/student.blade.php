@@ -124,6 +124,7 @@
             <th>Roll</th>
             <th>Name</th>
             <th>Registration</th>
+            <th>Contact No.</th>
             <th>Course 1</th>
             <th>Course 2</th>
             <th>Course 3</th>
@@ -140,6 +141,7 @@
                 <td>{{$student['roll']}}</td>
                 <td>{{$student['name']}}</td>
                 <td>{{$student['registration']}}</td>
+                <td>{{$student['contact_no']}}</td>
                 <td>{{$student['course1']}}</td>
                 <td>{{$student['course2']}}</td>
                 <td>{{$student['course3']}}</td>
@@ -212,9 +214,19 @@
                         </div>
                     </div>
                     
-                    <div class="form-group">
-                        <label for="editStudentRegistration">Registration:</label>
-                        <input type="number" class="form-control" id="editStudentRegistration" name="registration" min="1" required>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editStudentRegistration">Registration:</label>
+                                <input type="number" class="form-control" id="editStudentRegistration" name="registration" min="1" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="editStudentContactNo">Contact No.:</label>
+                                <input type="tel" class="form-control" id="editStudentContactNo" name="contact_no" placeholder="ex: 01712345678" pattern="(\+?88)?01[3-9][0-9]{8}" maxlength="14" title="Enter a valid mobile number, e.g. 01712345678">
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
@@ -365,6 +377,7 @@ function editStudent(studentId) {
         document.getElementById('editStudentName').value = student.name;
         document.getElementById('editStudentRoll').value = student.roll;
         document.getElementById('editStudentRegistration').value = student.registration;
+        document.getElementById('editStudentContactNo').value = student.contact_no || '';
         document.getElementById('editVerified').value = student.verified ? '1' : '0';
         
         // Set course selections using the stored course IDs
