@@ -49,33 +49,44 @@ directory into `public_html` or introduce a symlink that makes it directly publi
    copying it over the deployed entry point will break the website.
    Never replace all of `public_html`; it also contains the alumni website and
    remuneration application.
-5. When a release needs schema changes, confirm the MySQL backup first, then run
-   `migrate --force` explicitly. The unused legacy SQLite file is not a backup of
-   the production MySQL database.
-6. Clear configuration, route and view caches, then leave maintenance mode and
-   check the homepage, login, an exam page and a notice download.
+5. After the release's code and migration files are in `apps/backlog-scheduler`,
+   confirm the MySQL backup, then use **Deploy HEAD Commit** in cPanel's Git
+   Version Control to run the committed `.cpanel.yml` tasks. These clear the
+   configuration cache, run `migrate --force --no-interaction`, then clear route
+   and view caches. Terminal access is not required. Laravel applies only pending
+   migrations; it does not re-run already recorded migrations. The unused legacy
+   SQLite file is not a backup of the production MySQL database.
+6. If maintenance mode was enabled, leave it through the hosting provider's
+   supported execution facility, then check the homepage, login, an exam page
+   and a notice download. The current deployment tasks do not enter or leave
+   maintenance mode.
 
 The production CLI commands use PHP 8.3, matching the domain's cPanel handler:
 
 ```sh
 /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan down --retry=60
 /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan config:clear
+/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan migrate --force --no-interaction
 /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan route:clear
 /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan view:clear
 /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan up
 ```
 
-The `.cpanel.yml` file only clears caches in the correct application directory.
-It does not clone or publish files. cPanel's registered Git clone and its Deploy
-button are not needed for the manual workflow. Without shell access, use the
-hosting provider's supported execution facility or an explicitly authorized
-temporary cPanel cron job; remove temporary cron jobs after completion.
+The repository's `.cpanel.yml` runs migrations and clears caches in the correct
+application directory. It does not clone or publish files, install dependencies,
+or manage maintenance mode. **Update from Remote** updates only the staging
+clone; copy the release into the running app before clicking **Deploy HEAD
+Commit**. Do not run migrations from the staging clone, which does not contain
+the production `.env`. If a migration fails, inspect the cPanel deployment output
+and resolve the failure before treating the release as complete.
 
-The staging clone's `.cpanel.yml` is updated locally for the new layout. Commit
-the deployment configuration from the development repository when you next
-publish changes to GitHub. Until then, keep this local configuration change in
-the staging clone; cPanel may disable its Deploy button because the working tree
-has an uncommitted change. This does not prevent the live application from running.
+The staging clone has an earlier local `.cpanel.yml` change that only clears
+caches. The migration task added in the development repository is not active
+on cPanel until this configuration is committed, pushed to GitHub and pulled
+into the cPanel-managed clone. Reconcile the clone's earlier local change when
+pulling the committed configuration; deployment requires a clean working tree.
+The clone's uncommitted change may currently disable its Deploy button. This
+does not prevent the live application from running.
 
 ## Reorganization and recovery
 

@@ -2,8 +2,9 @@
 deployment:
   tasks:
     # Code is copied manually from the clone into this app directory.
-    # These tasks only clear caches; they do not copy or publish code.
-    # Back up the production MySQL database before running schema migrations.
+    # These tasks migrate the deployed app and clear caches; they do not copy code.
+    # Copy the release (including migrations) and back up production MySQL first.
     - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan config:clear
+    - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan migrate --force --no-interaction
     - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan route:clear
     - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan view:clear
