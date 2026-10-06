@@ -63,7 +63,6 @@
                         <th>Roll</th>
                         <th>Name</th>
                         <th>Registration</th>
-                        <th>Contact No.</th>
                         <th>Courses</th>
                         <th>Verified</th>
                         <th class="cell-actions"></th>
@@ -76,13 +75,6 @@
                             <td class="cell-main num">{{$student['roll']}}</td>
                             <td>{{$student['name']}}</td>
                             <td class="num">{{$student['registration']}}</td>
-                            <td class="num">
-                                @if($student['contact_no'])
-                                    {{$student['contact_no']}}
-                                @else
-                                    <span class="text-faint">Not given</span>
-                                @endif
-                            </td>
                             <td>
                                 <div class="tag-list">
                                     @foreach(['course1', 'course2', 'course3', 'course4', 'course5'] as $courseField)

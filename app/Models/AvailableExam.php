@@ -11,7 +11,11 @@ class AvailableExam extends Model
     protected $table = "available_exams";
     
     protected $fillable = [
-        'exam_name', 'department', 'series', 'deadline'
+        'exam_name', 'department', 'series', 'deadline', 'is_visible'
+    ];
+
+    protected $casts = [
+        'is_visible' => 'boolean',
     ];
     
     public function notices()

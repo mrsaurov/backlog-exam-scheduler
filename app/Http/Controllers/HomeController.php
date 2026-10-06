@@ -22,6 +22,7 @@ class HomeController extends Controller
         // Get exams that are not older than 3 months from deadline
         $threeMonthsAgo = date('Y-m-d', strtotime('-3 months'));
         $exams = AvailableExam::where('deadline', '>=', $threeMonthsAgo)
+                              ->where('is_visible', true)
                               ->orderBy('deadline', 'desc')
                               ->get();
         
@@ -40,6 +41,11 @@ class HomeController extends Controller
     public function register($examid)
     {
         $exam = AvailableExam::findOrFail($examid);
+
+        // Hidden exams are not available to students
+        if (!$exam->is_visible) {
+            return redirect('/')->with('error', 'This exam is not available.');
+        }
         
         // Check if registration is still open
         if ($exam->deadline < date('Y-m-d')) {
@@ -83,6 +89,9 @@ class HomeController extends Controller
         
         // Check if registration is still open for this exam
         $exam = AvailableExam::findOrFail($examid);
+        if (!$exam->is_visible) {
+            return redirect('/')->with('error', 'This exam is not available.');
+        }
         if ($exam->deadline < date('Y-m-d')) {
             return redirect('/')->with('error', 'Registration deadline for this exam has passed.');
         }
@@ -213,7 +222,7 @@ class HomeController extends Controller
     }
     public function admin()
     {
-        $exams = AvailableExam::orderBy('deadline', 'desc')->get();
+        $exams = AvailableExam::orderBy('deadline', 'desc')->orderBy('id', 'desc')->paginate(10);
         
         // Add notice counts for each exam
         foreach ($exams as $exam) {
@@ -245,6 +254,7 @@ class HomeController extends Controller
             $exam->deadline = "";
             $exam->exam_name = "";
             $exam->department = "";
+            $exam->is_visible = true;
             return view('exam')->with(['new'=>true, 
                                         'exam'=>$exam,
                                         'courses'=>$courses,
@@ -284,6 +294,8 @@ class HomeController extends Controller
         $dept = $req->input('department');
         $series = $req->input('series');
         $deadline = $req->input('deadline');
+        // Unticked "Visible to students" sends nothing, which hides the exam
+        $visible = $req->input('is_visible') == '1';
         $selected = $req->input('assignedcourses');
         if($operation == "delete")
         {
@@ -295,7 +307,7 @@ class HomeController extends Controller
         else if($operation == "update")
         {
             $examid = $req->input('exam_id');
-            AvailableExam::where('id','=',$examid)->update(array('exam_name'=>$name, 'department'=>$dept,'series'=>$series, 'deadline'=>$deadline));
+            AvailableExam::where('id','=',$examid)->update(array('exam_name'=>$name, 'department'=>$dept,'series'=>$series, 'deadline'=>$deadline, 'is_visible'=>$visible));
             
             CourseExamMapping::where('examid','=',$examid)->delete();
             
@@ -316,6 +328,7 @@ class HomeController extends Controller
             $exam->department = $dept;
             $exam->series= $series;
             $exam->deadline = $deadline;
+            $exam->is_visible = $visible;
             $exam->save();
             $examid = $exam->id;
             
@@ -334,6 +347,12 @@ class HomeController extends Controller
     public function examNotices($examId)
     {
         $exam = AvailableExam::findOrFail($examId);
+
+        // Hidden exams are not available to students
+        if (!$exam->is_visible) {
+            return redirect('/')->with('error', 'This exam is not available.');
+        }
+
         $notices = Notice::where('exam_id', $examId)
                         ->where('is_active', true)
                         ->orderBy('created_at', 'desc')

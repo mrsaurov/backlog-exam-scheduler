@@ -80,8 +80,7 @@
             <br>
             <p>{{$student['name']}}<br>
             Roll no.: {{$student['roll']}}<br>
-            Registration No.: {{$student['registration']}}<br>
-            Contact No.: {{$student['contact_no'] ?? ''}}</p>
+            Registration No.: {{$student['registration']}}</p>
         </div>
     </body>
 </html>

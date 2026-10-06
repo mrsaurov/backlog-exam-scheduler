@@ -74,6 +74,7 @@ The CRUD POST endpoints `/exams`, `/course`, `/notices`, `/teachers` and `/mail`
 - A registration can point at a course that is no longer in the exam's mapping (unticked later), or at a course ID that no longer exists. Pages that list registrations must tolerate both: `AdminController::students` labels them `removed` / `deleted` in `course_states`, and `courseupdate` refuses to delete a course that any registration still uses. Never index a course map with a registered course ID without a fallback.
 - `course_teacher_assignments` allows two teachers per course per exam. There is no position column: "Teacher 1" is the row with the lowest `id`.
 - `teachers` are global, not per exam.
+- `available_exams.is_visible` hides an exam from students regardless of its deadline: it is left off the home page, and its register and notices pages redirect home. The admin side ignores the flag except to label the exam "Hidden".
 - `available_exams.deadline` is a date compared with `date('Y-m-d')`; registration is open through the deadline day. The home page lists exams whose deadline is in the future or within the last three months.
 
 ### Rules that recur across controllers

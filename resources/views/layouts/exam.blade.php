@@ -28,14 +28,22 @@
         @php
             $workspaceDeadline = \Carbon\Carbon::parse($workspaceExam->deadline);
             $workspaceOpen = $workspaceExam->deadline >= date('Y-m-d');
+            $workspaceVisible = $workspaceExam->is_visible ?? true;
         @endphp
         <div class="workspace-title">
             <h1>{{ $workspaceExam->exam_name }}</h1>
-            <span class="status {{ $workspaceOpen ? 'status-open' : 'status-closed' }}">{{ $workspaceOpen ? 'Open' : 'Closed' }}</span>
+            @if(!$workspaceVisible)
+                <span class="status status-warning">Hidden</span>
+            @else
+                <span class="status {{ $workspaceOpen ? 'status-open' : 'status-closed' }}">{{ $workspaceOpen ? 'Open' : 'Closed' }}</span>
+            @endif
         </div>
         <p class="workspace-meta">
             {{ $workspaceExam->department }}, series {{ $workspaceExam->series }}.
             Registration {{ $workspaceOpen ? 'closes' : 'closed' }} on {{ $workspaceDeadline->format('j M Y') }}.
+            @if(!$workspaceVisible)
+                Hidden from students.
+            @endif
         </p>
     @else
         <div class="workspace-title">

@@ -13,12 +13,13 @@
         <a class="btn btn-primary" href="/exams/0"><i class="bi bi-plus-lg"></i> New exam</a>
     </div>
 
-    @if($exams && $exams->count() > 0) 
+    @if($exams && $exams->total() > 0) 
     @php
         $today = date('Y-m-d');
+        // Exams are listed newest deadline first, so each page splits into at most these two groups
         $groups = [
-            'Open for registration' => $exams->filter(function($exam) use ($today) { return $exam->deadline >= $today; }),
-            'Closed' => $exams->filter(function($exam) use ($today) { return $exam->deadline < $today; }),
+            'Current exams' => $exams->getCollection()->filter(function($exam) use ($today) { return $exam->deadline >= $today; }),
+            'Past exams' => $exams->getCollection()->filter(function($exam) use ($today) { return $exam->deadline < $today; }),
         ];
     @endphp
     @foreach($groups as $groupTitle => $groupExams)
@@ -28,8 +29,9 @@
     @php
         $deadline = \Carbon\Carbon::parse($exam->deadline);
         $open = $exam->deadline >= $today;
+        $visible = $exam->is_visible ?? true;
     @endphp
-    <article class="exam-slip {{ $open ? '' : 'is-closed' }}">
+    <article class="exam-slip {{ $open && $visible ? '' : 'is-closed' }}">
         <div class="exam-date">
             <span class="exam-date-label">{{ $open ? 'Closes' : 'Closed' }}</span>
             <span class="exam-date-day">{{ $deadline->format('j') }}</span>
@@ -37,7 +39,14 @@
         </div>
         <div class="exam-body d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div>
-                <h3 class="exam-title"><a href="/students/{{$exam->id}}">{{$exam->exam_name}}</a></h3>
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                    <h3 class="exam-title"><a href="/students/{{$exam->id}}">{{$exam->exam_name}}</a></h3>
+                    @if(!$visible)
+                        <span class="status status-warning">Hidden</span>
+                    @else
+                        <span class="status {{ $open ? 'status-open' : 'status-closed' }}">{{ $open ? 'Open' : 'Closed' }}</span>
+                    @endif
+                </div>
                 <p class="exam-meta">{{$exam->department}}, series {{$exam->series}}</p>
                 <p class="exam-meta num">
                     {{$exam->student_count}} registered, {{$exam->verified_count}} verified.
@@ -52,6 +61,12 @@
     @endforeach
     @endif
     @endforeach
+
+    @if($exams->hasPages())
+        <div class="mt-4">
+            {{ $exams->links('pagination::bootstrap-5') }}
+        </div>
+    @endif
     @else
     <div class="empty-state">
         <h2>No exams yet</h2>

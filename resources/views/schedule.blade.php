@@ -16,34 +16,43 @@
 
 <div class="tab-content">
     <div class="tab-pane fade show active" id="days-pane" role="tabpanel" aria-labelledby="days-tab" tabindex="0">
-        <div class="panel panel-flush">
-            <div class="panel-head">
+        <div class="panel">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                 <div>
-                    <h2 class="panel-title">Day-wise schedule</h2>
+                    <h2 class="panel-title mb-0">Day-wise schedule</h2>
                     <p class="section-note">{{count($result)}} exam {{ count($result) == 1 ? 'day' : 'days' }}. Courses that share a student are never placed on the same day. Only odd-numbered courses are scheduled.</p>
                 </div>
                 <a href="/export/schedule/{{ $examid }}" class="btn btn-quiet btn-sm">
                     <i class="bi bi-download"></i> Export CSV
                 </a>
             </div>
-            @if(count($result) > 0)
-            <div class="table-responsive">
-                <table class="table table-clean" style="min-width: 560px;">
-                    <thead>
-                        <tr>
-                            <th>Course code</th>
-                            <th>Course title</th>
-                            <th>Student rolls</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($result as $days)
-                            <tr class="table-group">
-                                <th colspan="3">Day {{$loop->iteration}}</th>
+        </div>
+
+        @if(count($result) > 0)
+            @foreach($result as $days)
+            <div class="panel panel-flush day-panel">
+                <div class="panel-head">
+                    <h3 class="panel-title">Day {{$loop->iteration}}</h3>
+                    <span class="toolbar-note num">{{count($days)}} {{ count($days) == 1 ? 'course' : 'courses' }}</span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-clean day-table">
+                        <colgroup>
+                            <col style="width: 20%;">
+                            <col style="width: 34%;">
+                            <col>
+                        </colgroup>
+                        <thead>
+                            <tr>
+                                <th>Course code</th>
+                                <th>Course title</th>
+                                <th>Student rolls</th>
                             </tr>
+                        </thead>
+                        <tbody>
                             @foreach($days as $dayCourse)
                                 <tr>
-                                    <td class="cell-main num text-nowrap">{{$coursemap[$dayCourse]}}</td>
+                                    <td class="cell-main num">{{$coursemap[$dayCourse]}}</td>
                                     <td>{{$courseTitles[$dayCourse]}}</td>
                                     <td class="num">
                                         @if(isset($courseStudents[$dayCourse]))
@@ -52,17 +61,17 @@
                                     </td>
                                 </tr>
                             @endforeach
-                        @endforeach
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            @else
-            <div class="empty-state">
-                <h3>No odd-numbered courses to schedule</h3>
-                <p>Verified students have only registered for even-numbered courses so far.</p>
-            </div>
-            @endif
+            @endforeach
+        @else
+        <div class="empty-state mt-3">
+            <h3>No odd-numbered courses to schedule</h3>
+            <p>Verified students have only registered for even-numbered courses so far.</p>
         </div>
+        @endif
     </div>
 
     <div class="tab-pane fade" id="courses-pane" role="tabpanel" aria-labelledby="courses-tab" tabindex="0">

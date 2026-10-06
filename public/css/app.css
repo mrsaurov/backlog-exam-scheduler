@@ -771,6 +771,28 @@ label {
     font-weight: 600;
 }
 
+/* ---------- Schedule: one block per exam day ---------- */
+
+.day-panel {
+    margin-top: 1.5rem !important;
+}
+
+.day-panel .panel-head {
+    padding-top: .7rem;
+    padding-bottom: .7rem;
+    background: var(--accent-wash);
+    border-bottom-color: #d9e1f7;
+}
+
+.day-panel .panel-title {
+    color: var(--accent-deep);
+}
+
+.day-table {
+    table-layout: fixed;
+    min-width: 640px;
+}
+
 /* ---------- Labels ---------- */
 
 .status {

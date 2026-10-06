@@ -35,6 +35,14 @@
                     <label for="series" class="form-label">Series</label>
                     <input type="text" class="form-control" name="series" id="series" placeholder="ex: 19" value="{{$exam->series}}" required>
                 </div>
+                <div class="col-12">
+                    <div class="form-check form-switch">
+                        <input type="checkbox" class="form-check-input" role="switch" id="is_visible" name="is_visible" value="1"
+                               {{ ($exam->is_visible ?? true) ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_visible">Visible to students</label>
+                        <div class="form-hint">Turn this off to hide the exam from the student site, even before its deadline. While it is hidden, students cannot register for it or read its notices.</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -54,6 +62,11 @@
                         @foreach($years as $year)
                             <option value="{{$year}}">Year {{$year}}</option>
                         @endforeach
+                    </select>
+                    <select id="courseKind" class="form-select form-select-sm w-auto" aria-label="Filter by course type">
+                        <option value="">Theory and sessional</option>
+                        <option value="theory">Theory (odd numbers)</option>
+                        <option value="sessional">Sessional (even numbers)</option>
                     </select>
                     <a class="btn btn-quiet btn-sm" href="/courses/0/{{$exam->id}}"><i class="bi bi-plus-lg"></i> Add course</a>
                 </div>
@@ -75,8 +88,14 @@
                     </thead>
                     <tbody>
                     @foreach($courses as $course)
-                        @php $registeredCount = $registeredCounts[$course->id] ?? 0; @endphp
-                        <tr data-year="{{$course->year}}" data-search="{{ strtolower($course->course_code . ' ' . $course->course_title) }}"
+                        @php
+                            $registeredCount = $registeredCounts[$course->id] ?? 0;
+                            // The first number in the course code decides the kind: odd is theory, even is sessional
+                            $courseKind = preg_match('/(\d+)/', $course->course_code, $courseNumber)
+                                ? (intval($courseNumber[0]) % 2 === 1 ? 'theory' : 'sessional')
+                                : '';
+                        @endphp
+                        <tr data-year="{{$course->year}}" data-kind="{{$courseKind}}" data-search="{{ strtolower($course->course_code . ' ' . $course->course_title) }}"
                             data-code="{{$course->course_code}}" data-registered="{{$registeredCount}}">
                             <td class="cell-check">
                                 <input type="checkbox" class="form-check-input course-check" name="assignedcourses[]" value="{{$course->id}}" id="course_{{$course->id}}" {{ $selectedIds->contains($course->id) ? 'checked' : '' }} />
@@ -100,12 +119,12 @@
             </div>
             <div class="empty-state" id="courseNoMatch" hidden>
                 <h3>No course matches</h3>
-                <p>Change the search or the year filter, or add the course.</p>
+                <p>Change the search or the filters, or add the course.</p>
             </div>
         </div>
 
         <div class="sticky-bar">
-            <span class="sticky-note"><span class="num" data-course-count>0</span> courses selected</span>
+            <span class="sticky-note"><span class="num" data-course-count>0</span> <span data-course-noun>courses</span> selected</span>
             @if($new==true)
                 <button type="submit" name="submit" value="create" class="btn btn-primary">Create exam</button>
             @else
@@ -125,6 +144,7 @@
     var rows = Array.prototype.slice.call(document.querySelectorAll('#courseTable tbody tr'));
     var search = document.getElementById('courseSearch');
     var year = document.getElementById('courseYear');
+    var kind = document.getElementById('courseKind');
     var selectAll = document.getElementById('courseSelectAll');
     var noMatch = document.getElementById('courseNoMatch');
 
@@ -136,6 +156,9 @@
         var total = document.querySelectorAll('.course-check:checked').length;
         document.querySelectorAll('[data-course-count]').forEach(function(el) {
             el.textContent = total;
+        });
+        document.querySelectorAll('[data-course-noun]').forEach(function(el) {
+            el.textContent = total === 1 ? 'course' : 'courses';
         });
 
         var shown = shownRows();
@@ -151,7 +174,8 @@
         rows.forEach(function(row) {
             var matchesSearch = !query || row.dataset.search.indexOf(query) !== -1;
             var matchesYear = !year.value || row.dataset.year === year.value;
-            row.hidden = !(matchesSearch && matchesYear);
+            var matchesKind = !kind.value || row.dataset.kind === kind.value;
+            row.hidden = !(matchesSearch && matchesYear && matchesKind);
         });
         noMatch.hidden = shownRows().length > 0;
         refreshCount();
@@ -159,6 +183,7 @@
 
     search.addEventListener('input', applyFilter);
     year.addEventListener('change', applyFilter);
+    kind.addEventListener('change', applyFilter);
 
     // Enter in the search box should not submit the exam form
     search.addEventListener('keydown', function(e) {
