@@ -63,9 +63,11 @@ The committed `.cpanel.yml` runs one command with the domain's PHP 8.3 CLI:
   If Composer is unavailable, reuses dependencies only with an unchanged lockfile;
   otherwise stops before touching production. Supported locations include
   `/opt/cpanel/composer/bin/composer` and `maintenance/composer.phar`.
+  This account has the official Composer PHAR installed in the latter location.
 - Checks the database connection and counts pending migrations. Creates a private
   MySQL schema/data gzip backup using a consistent transaction, then reads it back
-  before proceeding. The built-in backup supports InnoDB tables without views or
+  before proceeding. Exports and restores timestamps in UTC explicitly. The
+  built-in backup supports InnoDB tables without views or
   triggers; unsupported schemas stop deployment. SQLite snapshots support tests.
 - Backs up managed web assets, enters maintenance mode, refreshes mutable data,
   archives the old application and activates the candidate at the existing path.
@@ -124,6 +126,28 @@ than the lockfile supports; this still rejects any lockfile change. Normal cPane
 deployment does not pass this argument and uses available Composer on PHP 8.3.
 
 ## Deployment verification (2026-10-07)
+
+The full release at `c43ff22` was pushed, pulled and deployed through cPanel.
+The first run verified the unchanged-lockfile dependency fallback; the second
+used the official Composer 2.10.3 PHAR in `maintenance/composer.phar`, installed
+production dependencies, removed 39 development packages and passed PHP 8.3.35
+platform checks. Both completed successfully with a 14-table MySQL backup,
+cache clearing and HTTP checks. No migrations were pending, since the migration
+below had already been applied. The new homepage, login and notice UI is live.
+
+Composer's downloaded SHA-256 matched the official release checksum:
+`7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6`.
+Existing duplicate vendor classes and unused legacy teacher controller files
+produce non-fatal autoload warnings; the deployed pages passed their checks.
+
+The downloaded automatic backup contained all 14 schemas and 1,958 rows.
+Comparison with the earlier cPanel export identified only a six-hour session
+timezone difference in TIMESTAMP values. The deployment backup now explicitly
+exports and restores in UTC, and defines SQL mode for quoted values and zero IDs.
+The disposable integration fixture also passed full/repeated release, runtime
+rollback, pending migration and failed-migration recovery checks.
+
+### Earlier migration-only deployment
 
 Commit `4241ed2` was pushed to GitHub, pulled through **Update from Remote**, and
 run through **Deploy HEAD Commit**. A fresh MySQL backup was downloaded and

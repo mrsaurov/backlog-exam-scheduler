@@ -143,9 +143,11 @@ function deployHelper(string $action, string $root, string $argument): void
         };
         $identifier = fn($name) => '`'.str_replace('`', '``', $name).'`';
         try {
+            // Export TIMESTAMP values in a defined timezone, independent of server defaults.
+            $pdo->exec("SET time_zone = '+00:00'");
             $pdo->exec('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
             $pdo->exec('START TRANSACTION WITH CONSISTENT SNAPSHOT');
-            $write("-- Backlog scheduler deployment backup\nSET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n");
+            $write("-- Backlog scheduler deployment backup\nSET NAMES utf8mb4;\nSET TIME_ZONE='+00:00';\nSET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';\nSET FOREIGN_KEY_CHECKS=0;\n");
             foreach ($tables as $table) {
                 $name = $identifier($table['TABLE_NAME']);
                 $create = $pdo->query('SHOW CREATE TABLE '.$name)->fetch(PDO::FETCH_NUM)[1];

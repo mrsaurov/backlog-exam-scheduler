@@ -42,7 +42,8 @@ Paths below are relative to `/home/servicescserueta/`:
 | `apps/backlog-scheduler/` | Deployed Laravel application, production `.env`, `vendor`, storage and notice uploads. |
 | `public_html/` | Domain document root: customized `index.php`, `.htaccess`, public assets and existing separate websites. |
 | `backups/backlog-reorganization-2026-10-06/` | Archived original deployment and entry-point backups. |
-| `maintenance/` | Private reorganization script, logs and state. |
+| `backups/backlog-deployments/` | Previous applications, web assets and database snapshots for each release. |
+| `maintenance/` | Private deployment/reorganization logs, state, locks and official Composer PHAR. |
 
 - `.cpanel.yml` runs `scripts/cpanel-deploy.php` for a full release. The workflow is Update from Remote, then Deploy HEAD Commit. The script prepares tracked code/dependencies, backs up MySQL and the previous release, preserves runtime data, publishes assets, runs migrations, clears caches, checks public pages and leaves maintenance mode. Use committed configuration in a clean checkout. See the deployment document for dependency requirements and recovery.
 - Preserve production `.env`, `storage` and `public/uploads`. The full deployment script backs up MySQL before applying pending migrations; inspect its backup and status when verifying a release. Additional cPanel backups remain useful before major schema changes. A legacy SQLite file is not a production database backup.
