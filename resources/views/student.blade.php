@@ -155,7 +155,7 @@
                     >
                 </td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-info btn-sm me-1" onclick="viewStudentDetails({{$student['id']}}, '{{$student['name']}}', '{{addslashes($student['last_appeared_exam'] ?? 'Not specified')}}', '{{addslashes($student['backlogged_subjects'] ?? 'Not specified')}}')" title="View Additional Details">
+                    <button type="button" class="btn btn-info btn-sm me-1" onclick="viewStudentDetails({{$student['id']}}, '{{$student['name']}}', '{{addslashes($student['last_appeared_exam'] ?? 'Not specified')}}', '{{addslashes($student['backlogged_subjects'] ?? 'Not specified')}}', '{{addslashes($student['contact_no'] ?? '')}}')" title="View Additional Details">
                         <i class="bi bi-eye"></i>
                     </button>
                     <button type="button" class="btn btn-primary btn-sm me-1" onclick="editStudent({{$student['id']}})" title="Edit Student">
@@ -328,6 +328,10 @@
                     </div>
                 </div>
                 <div class="form-group">
+                    <label class="font-weight-bold">Contact No.:</label>
+                    <p id="detailContactNo" class="text-muted"></p>
+                </div>
+                <div class="form-group">
                     <label class="font-weight-bold">Last Appeared Exam:</label>
                     <p id="detailLastExam" class="text-muted"></p>
                 </div>
@@ -344,9 +348,10 @@
 </div>
 
 <script>
-function viewStudentDetails(studentId, studentName, lastExam, backloggedSubjects) {
+function viewStudentDetails(studentId, studentName, lastExam, backloggedSubjects, contactNo) {
     // Set modal content
     document.getElementById('detailStudentName').textContent = studentName;
+    document.getElementById('detailContactNo').textContent = contactNo || 'Not specified';
     document.getElementById('detailLastExam').textContent = lastExam || 'Not specified';
     document.getElementById('detailBackloggedSubjects').textContent = backloggedSubjects || 'Not specified';
     
