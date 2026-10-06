@@ -72,6 +72,8 @@ Route::post('/mail', [App\Http\Controllers\MailController::class, 'store'])->mid
 Route::get('/mail/preview/{templateid}', [App\Http\Controllers\MailController::class, 'preview'])->middleware('adminlogin');
 Route::post('/mail/{examid}/send-general', [App\Http\Controllers\MailController::class, 'sendGeneral'])->middleware('adminlogin');
 Route::post('/mail/{examid}/send-customized', [App\Http\Controllers\MailController::class, 'sendCustomized'])->middleware('adminlogin');
+Route::get('/mail/{examid}/log', [App\Http\Controllers\MailController::class, 'log'])->middleware('adminlogin');
+Route::post('/mail/{examid}/log/{logid}/resend', [App\Http\Controllers\MailController::class, 'resend'])->middleware('adminlogin');
 
 // Notice file viewing route
 Route::get('/notice-file/{noticeid}', [AdminController::class, 'viewNoticeFile']);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Mail\ExamNotificationMail;
+use App\Models\MailLog;
 use App\Models\MailTemplate;
 use App\Models\AvailableExam;
 use App\Models\Course;
@@ -104,6 +105,70 @@ Department of Computer Science & Engineering<br>
 Rajshahi University of Engineering & Technology (RUET)</p>'
             ]
         ];
+    }
+
+    /**
+     * Get IDs of courses that have verified student registrations in an exam
+     */
+    private function activeCourseIds($examid)
+    {
+        $registeredStudents = RegisteredStudent::where('examid', $examid)
+            ->where('verified', true)
+            ->get();
+
+        $coursesWithStudents = [];
+        foreach($registeredStudents as $student) {
+            if($student->course1) $coursesWithStudents[] = $student->course1;
+            if($student->course2) $coursesWithStudents[] = $student->course2;
+            if($student->course3) $coursesWithStudents[] = $student->course3;
+            if($student->course4) $coursesWithStudents[] = $student->course4;
+            if($student->course5) $coursesWithStudents[] = $student->course5;
+        }
+
+        return array_values(array_unique($coursesWithStudents));
+    }
+
+    /**
+     * Send a mail and record the attempt in the mail tracker
+     */
+    private function sendAndLog($examid, $recipient, $mailType, $templateName, $subject, $content, $attachmentPaths = [], $resentFromId = null)
+    {
+        $status = 'sent';
+        $errorMessage = null;
+
+        try {
+            // Send email using Laravel Mail
+            Mail::to($recipient['email'])->send(new ExamNotificationMail(
+                $subject,
+                $content,
+                $attachmentPaths
+            ));
+        } catch (Exception $e) {
+            $status = 'failed';
+            $errorMessage = $e->getMessage();
+            \Log::error('Failed to send email to ' . $recipient['email'] . ': ' . $errorMessage);
+        }
+
+        try {
+            MailLog::create([
+                'exam_id' => $examid,
+                'teacher_id' => $recipient['teacher_id'] ?? null,
+                'recipient_name' => $recipient['name'],
+                'recipient_email' => $recipient['email'],
+                'mail_type' => $mailType,
+                'template_name' => $templateName,
+                'subject' => $subject,
+                'content' => $content,
+                'attachment_names' => count($attachmentPaths) > 0 ? array_column($attachmentPaths, 'name') : null,
+                'status' => $status,
+                'error_message' => $errorMessage,
+                'resent_from_id' => $resentFromId,
+            ]);
+        } catch (Exception $e) {
+            \Log::error('Failed to record mail log for ' . $recipient['email'] . ': ' . $e->getMessage());
+        }
+
+        return $status === 'sent';
     }
 
     /**
@@ -265,32 +330,24 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
     {
         $template = MailTemplate::with('exam')->findOrFail($templateid);
         
+        $activeCourseIds = $this->activeCourseIds($template->exam_id);
+
         // Get recipients based on template type
         if ($template->type === 'general') {
             // Get all teachers assigned to courses with verified students in this exam
-            $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template) {
+            $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template, $activeCourseIds) {
                 $query->where('exam_id', $template->exam_id)
-                      ->whereHas('course.registeredStudents', function($q) use ($template) {
-                          $q->where('exam_id', $template->exam_id)
-                            ->where('verification_status', 'verified');
-                      });
+                      ->whereIn('course_id', $activeCourseIds);
             })->get();
         } else {
             // Get teachers assigned to specific courses with verified students
-            $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template) {
+            $templateCourseIds = array_intersect($template->assigned_courses ?? [], $activeCourseIds);
+            $recipients = Teacher::whereHas('courseAssignments', function($query) use ($template, $templateCourseIds) {
                 $query->where('exam_id', $template->exam_id)
-                      ->whereIn('course_id', $template->assigned_courses)
-                      ->whereHas('course.registeredStudents', function($q) use ($template) {
-                          $q->where('exam_id', $template->exam_id)
-                            ->where('verification_status', 'verified');
-                      });
-            })->with(['courseAssignments' => function($query) use ($template) {
+                      ->whereIn('course_id', $templateCourseIds);
+            })->with(['courseAssignments' => function($query) use ($template, $templateCourseIds) {
                 $query->where('exam_id', $template->exam_id)
-                      ->whereIn('course_id', $template->assigned_courses)
-                      ->whereHas('course.registeredStudents', function($q) use ($template) {
-                          $q->where('exam_id', $template->exam_id)
-                            ->where('verification_status', 'verified');
-                      })
+                      ->whereIn('course_id', $templateCourseIds)
                       ->with('course');
             }])->get();
         }
@@ -334,12 +391,10 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
             }
             
             // Get all teachers assigned to courses with verified students in this exam
-            $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid) {
+            $activeCourseIds = $this->activeCourseIds($examid);
+            $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid, $activeCourseIds) {
                 $query->where('exam_id', $examid)
-                      ->whereHas('course.registeredStudents', function($q) use ($examid) {
-                          $q->where('exam_id', $examid)
-                            ->where('verification_status', 'verified');
-                      });
+                      ->whereIn('course_id', $activeCourseIds);
             })->get();
 
             $sentCount = 0;
@@ -357,17 +412,11 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                     $personalizedContent = str_replace('[Deadline Date]', $formattedDeadline, $personalizedContent);
                 }
                 
-                try {
-                    // Send email using Laravel Mail
-                    Mail::to($teacher->email)->send(new ExamNotificationMail(
-                        $personalizedSubject,
-                        $personalizedContent,
-                        $attachmentPaths
-                    ));
+                $recipient = ['teacher_id' => $teacher->id, 'name' => $teacher->name, 'email' => $teacher->email];
+                if ($this->sendAndLog($examid, $recipient, 'general', null, $personalizedSubject, $personalizedContent, $attachmentPaths)) {
                     $sentCount++;
-                } catch (Exception $e) {
+                } else {
                     $failedCount++;
-                    \Log::error('Failed to send email to ' . $teacher->email . ': ' . $e->getMessage());
                 }
             }
 
@@ -520,16 +569,11 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                     $personalizedContent = str_replace('<strong>[Deadline Date]</strong>', '<strong>' . date('F j, Y', strtotime($request->deadline)) . '</strong>', $personalizedContent);
                 }
 
-                try {
-                    // Send email using Laravel Mail
-                    Mail::to($teacher->email)->send(new ExamNotificationMail(
-                        $personalizedSubject,
-                        $personalizedContent
-                    ));
+                $recipient = ['teacher_id' => $teacher->id, 'name' => $teacher->name, 'email' => $teacher->email];
+                if ($this->sendAndLog($examid, $recipient, 'customized', $template['name'], $personalizedSubject, $personalizedContent)) {
                     $sentCount++;
-                } catch (Exception $e) {
+                } else {
                     $failedCount++;
-                    \Log::error('Failed to send email to ' . $teacher->email . ': ' . $e->getMessage());
                 }
             }
 
@@ -543,5 +587,65 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
         } catch (Exception $e) {
             return redirect('/mail/' . $examid)->with('error', 'Error sending customized mail: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Display the mail tracker for an exam
+     */
+    public function log(Request $request, $examid)
+    {
+        $exam = AvailableExam::findOrFail($examid);
+        $status = in_array($request->get('status'), ['sent', 'failed']) ? $request->get('status') : 'all';
+
+        $query = MailLog::where('exam_id', $examid);
+        if ($status !== 'all') {
+            $query->where('status', $status);
+        }
+        $logs = $query->orderBy('id', 'desc')->paginate(50)->appends($request->only('status'));
+
+        // Failed logs that already have a later attempt (latest attempt's status)
+        $retriedIds = MailLog::where('exam_id', $examid)
+            ->whereNotNull('resent_from_id')
+            ->orderBy('id')
+            ->pluck('status', 'resent_from_id')
+            ->toArray();
+
+        // Details shown in the "View Email" modal, keyed by log ID
+        $mailData = $logs->getCollection()->keyBy('id')->map(function($log) {
+            return [
+                'to' => $log->recipient_name . ' <' . $log->recipient_email . '>',
+                'subject' => $log->subject,
+                'date' => $log->created_at->timezone('Asia/Dhaka')->format('j M Y, g:i A'),
+                'status' => $log->status === 'sent' ? 'Sent' : 'Failed',
+                'error' => $log->error_message,
+                'content' => $log->content,
+            ];
+        });
+
+        return view('mail.log')->with([
+            'exam' => $exam,
+            'logs' => $logs,
+            'mailData' => $mailData,
+            'status' => $status,
+            'sentCount' => MailLog::where('exam_id', $examid)->where('status', 'sent')->count(),
+            'failedCount' => MailLog::where('exam_id', $examid)->where('status', 'failed')->count(),
+            'retriedIds' => $retriedIds,
+        ]);
+    }
+
+    /**
+     * Resend a failed mail from the mail tracker
+     */
+    public function resend($examid, $logid)
+    {
+        $log = MailLog::where('exam_id', $examid)->where('status', 'failed')->findOrFail($logid);
+
+        $recipient = ['teacher_id' => $log->teacher_id, 'name' => $log->recipient_name, 'email' => $log->recipient_email];
+        $sent = $this->sendAndLog($examid, $recipient, $log->mail_type, $log->template_name, $log->subject, $log->content, [], $log->id);
+
+        if ($sent) {
+            return redirect()->back()->with('success', 'Mail resent successfully to ' . $log->recipient_email . '.');
+        }
+        return redirect()->back()->with('error', 'Resend to ' . $log->recipient_email . ' failed again. See the newest entry for the reason.');
     }
 }

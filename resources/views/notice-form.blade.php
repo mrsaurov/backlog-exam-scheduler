@@ -1,14 +1,19 @@
-@extends('layouts.master')
+@extends('layouts.exam')
  
-@section('title', $isNew ? 'Create Notice' : 'Edit Notice')
+@section('title', $isNew ? 'New notice' : 'Edit notice')
+@section('tab', 'notices')
  
-@section('content')
-<div class="row">
-    <div class="col-md-8">
-        <h2>{{$isNew ? 'Create New Notice' : 'Edit Notice'}} for {{$exam->exam_name}}</h2>
+@section('exam-content')
+<div class="page-form">
+    <div class="subpage-head">
+        <a href="/notices/{{$exam->id}}" class="back-link"><i class="bi bi-arrow-left"></i> Back to notices</a>
+        <h2>{{$isNew ? 'New notice' : 'Edit notice'}}</h2>
+    </div>
+
         @if ($errors->any())
             <div class="alert alert-danger">
-                <ul class="mb-0">
+                <strong>The notice was not saved.</strong>
+                <ul class="mb-0 mt-1">
                     @foreach ($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -23,95 +28,68 @@
                 <input type="hidden" name="notice_id" value="{{$notice->id}}">
             @endif
             
-            <div class="form-group">
-                <label for="title">Notice Title:</label>
-                <input type="text" name="title" class="form-control" id="title" 
-                       placeholder="Enter notice title" value="{{ old('title', $notice->title) }}" required maxlength="500">
-                <small class="form-text text-muted">Maximum 500 characters</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="content">Notice Content:</label>
-                <div class="mb-2 btn-group" role="group" aria-label="Formatting toolbar">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-bold"><strong>B</strong></button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btn-italic"><em>I</em></button>
+            <div class="panel">
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title</label>
+                    <input type="text" name="title" class="form-control" id="title" 
+                           value="{{ old('title', $notice->title) }}" required maxlength="500">
                 </div>
-                <textarea name="content" class="form-control" id="content" rows="10" 
-                          placeholder="Enter notice content" required>{{ old('content', $notice->content) }}</textarea>
-                <small class="form-text text-muted">Use the toolbar to add <b>bold</b> or <i>italic</i>. Selected text will be wrapped. Allowed tags: &lt;b&gt;, &lt;i&gt;, &lt;br&gt;.</small>
-            </div>
-            
-            <div class="form-group">
-                <label for="notice_file">Attach File (Optional):</label>
-                @if(!$isNew && $notice->file_name)
-                    <div class="mb-2">
-                        <div class="alert alert-info py-2">
-                            <i class="fas fa-paperclip"></i> 
-                            <strong>Current file:</strong> 
-                            <a href="/notice-file/{{$notice->id}}" target="_blank" class="alert-link">
-                                {{$notice->file_name}}
-                            </a>
-                            <small class="text-muted">({{ number_format($notice->file_size / 1024, 1) }} KB)</small>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-end mb-1">
+                        <label for="content" class="form-label mb-0">Content</label>
+                        <div class="toolbar-group" role="group" aria-label="Formatting toolbar">
+                            <button type="button" class="btn btn-quiet btn-sm" id="btn-bold" title="Bold" aria-label="Bold"><i class="bi bi-type-bold"></i></button>
+                            <button type="button" class="btn btn-quiet btn-sm" id="btn-italic" title="Italic" aria-label="Italic"><i class="bi bi-type-italic"></i></button>
                         </div>
                     </div>
-                @endif
-                <input type="file" name="notice_file" class="form-control-file" id="notice_file" 
-                       accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx">
-                <small class="form-text text-muted">
-                    Supported formats: PDF, JPG, PNG, GIF, DOC, DOCX. Maximum size: 5MB.
+                    <textarea name="content" class="form-control" id="content" rows="10" 
+                              required>{{ old('content', $notice->content) }}</textarea>
+                    <div class="form-hint">Select text and use the buttons for <b>bold</b> or <i>italic</i>. Line breaks are kept as you type them.</div>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="notice_file" class="form-label">Attachment <span class="optional">(optional)</span></label>
                     @if(!$isNew && $notice->file_name)
-                        <br><strong>Note:</strong> Uploading a new file will replace the current one.
+                        <div class="mb-2">
+                            <a href="/notice-file/{{$notice->id}}" target="_blank" class="file-chip mt-0">
+                                <i class="bi bi-paperclip"></i>
+                                <span>
+                                    {{$notice->file_name}}
+                                    <small class="d-block">Current file, {{ number_format($notice->file_size / 1024, 1) }} KB</small>
+                                </span>
+                            </a>
+                        </div>
                     @endif
-                </small>
+                    <input type="file" name="notice_file" class="form-control" id="notice_file" 
+                           accept=".pdf,.jpg,.jpeg,.png,.gif,.doc,.docx">
+                    <div class="form-hint">
+                        PDF, JPG, PNG, GIF, DOC or DOCX, up to 5 MB.
+                        @if(!$isNew && $notice->file_name)
+                            Choosing a new file replaces the current one.
+                        @endif
+                    </div>
+                </div>
+                
+                <div class="form-check form-switch">
+                    <input type="checkbox" class="form-check-input" role="switch" id="is_active" name="is_active" value="1"
+                           {{ old('is_active', $notice->is_active) ? 'checked' : '' }}>
+                    <label class="form-check-label" for="is_active">
+                        Visible to students
+                    </label>
+                    <div class="form-hint">Turn this off to keep the notice as a hidden draft.</div>
+                </div>
             </div>
             
-            <div class="form-group form-check">
-                <input type="checkbox" class="form-check-input" id="is_active" name="is_active" value="1"
-                       {{ old('is_active', $notice->is_active) ? 'checked' : '' }}>
-                <label class="form-check-label" for="is_active">
-                    Active (visible to students)
-                </label>
-            </div>
-            
-            <div class="form-group">
+            <div class="form-actions">
                 @if($isNew)
-                    <button type="submit" name="submit" value="create" class="btn btn-success">Create Notice</button>
+                    <button type="submit" name="submit" value="create" class="btn btn-primary">Publish notice</button>
                 @else
-                    <button type="submit" name="submit" value="update" class="btn btn-primary">Update Notice</button>
+                    <button type="submit" name="submit" value="update" class="btn btn-primary">Save changes</button>
                 @endif
-                <a href="/notices/{{$exam->id}}" class="btn btn-secondary ml-2">Cancel</a>
+                <a href="/notices/{{$exam->id}}" class="btn btn-quiet">Cancel</a>
             </div>
         </form>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5>Exam Information</h5>
-            </div>
-            <div class="card-body">
-                <p><strong>Name:</strong><br><span class="text-muted">{{$exam->exam_name}}</span></p>
-                <p><strong>Department:</strong><br><span class="text-muted">{{$exam->department}}</span></p>
-                <p><strong>Series:</strong><br><span class="text-muted">{{$exam->series}}</span></p>
-                <p><strong>Deadline:</strong><br><span class="text-muted">{{$exam->deadline}}</span></p>
-            </div>
-        </div>
-        
-        <div class="card mt-3">
-            <div class="card-header">
-                <h5>Notice Guidelines</h5>
-            </div>
-            <div class="card-body">
-                <ul class="small">
-                    <li>Keep the title concise and descriptive</li>
-                    <li>Use clear and simple language in the content</li>
-                    <li>Include important dates and deadlines</li>
-                    <li>Uncheck "Active" to hide the notice from students</li>
-                    <li>Line breaks will be preserved when displayed</li>
-                </ul>
-            </div>
-        </div>
-    </div>
 </div>
 
 @endsection
@@ -155,37 +133,6 @@ document.addEventListener('DOMContentLoaded', function(){
     italicBtn.addEventListener('click', function(){
         wrapSelection(contentEl, '<i>', '</i>');
     });
-    
-    // File upload preview
-    const fileInput = document.getElementById('notice_file');
-    if (fileInput) {
-        fileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            const existingPreview = document.getElementById('file-preview');
-            
-            // Remove existing preview
-            if (existingPreview) {
-                existingPreview.remove();
-            }
-            
-            if (file) {
-                const preview = document.createElement('div');
-                preview.id = 'file-preview';
-                preview.className = 'alert alert-success mt-2';
-                
-                const fileSize = (file.size / 1024).toFixed(1);
-                const fileType = file.type || 'Unknown';
-                
-                preview.innerHTML = `
-                    <i class="fas fa-file text-success mr-2"></i>
-                    <strong>Selected file:</strong> ${file.name}<br>
-                    <small class="text-muted">Type: ${fileType} • Size: ${fileSize} KB</small>
-                `;
-                
-                fileInput.parentNode.insertBefore(preview, fileInput.nextSibling);
-            }
-        });
-    }
 });
 </script>
 @endsection

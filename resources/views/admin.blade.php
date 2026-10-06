@@ -1,65 +1,63 @@
 @extends('layouts.master')
  
-@section('title', 'admin')
+@section('title', 'Manage exams')
  
 
 @section('content')
-    
-    @if($exams && $exams->count() > 0) 
-    @foreach($exams as $exam)
-    <div class="card">
-        <h5 class="card-header">{{$exam->exam_name}}</h5>
-        <div class="card-body">
-            <h5 class="card-title">Department: {{$exam->department}}</h5>
-            <div class="row mb-2">
-                <div class="col-sm-6">
-                    <strong>Series:</strong> {{$exam->series}}
-                </div>
-                <div class="col-sm-6">
-                    <strong>Deadline:</strong> <span class="text-danger">{{$exam->deadline}}</span>
-                </div>
-            </div>
-            @if($exam->notice_count > 0)
-                <div class="alert alert-info py-2 mb-3">
-                    <i class="fas fa-bell"></i> <strong>{{$exam->notice_count}}</strong> total notices 
-                    ({{$exam->active_notice_count}} active)
-                </div>
-            @endif
-            <div class="btn-group-vertical d-block d-md-none mb-2">
-                <a href="/exams/{{$exam->id}}" class="btn btn-primary mb-1">Edit/Delete</a>
-                <a href="/students/{{$exam->id}}" class="btn btn-primary mb-1">View/Verify Students</a>
-                <a href="/schedule/{{$exam->id}}" class="btn btn-primary mb-1">Schedule Exams</a>
-                <a href="/notices/{{$exam->id}}" class="btn btn-info mb-1">
-                    Manage Notices
-                    @if($exam->notice_count > 0)
-                        <span class="badge badge-light ml-1">{{$exam->notice_count}}</span>
-                    @endif
-                </a>
-                <a href="/teachers/{{$exam->id}}" class="btn btn-success mb-1">Manage Teachers</a>
-                <a href="/mail/{{$exam->id}}" class="btn btn-warning">Manage Mails</a>
-            </div>
-            <div class="d-none d-md-block">
-                <a href="/exams/{{$exam->id}}" class="btn btn-primary">Edit/Delete</a>
-                <a href="/students/{{$exam->id}}" class="btn btn-primary">View/Verify Students</a>
-                <a href="/schedule/{{$exam->id}}" class="btn btn-primary">Schedule Exams</a>
-                <a href="/notices/{{$exam->id}}" class="btn btn-info">
-                    Manage Notices
-                    @if($exam->notice_count > 0)
-                        <span class="badge badge-light ml-1">{{$exam->notice_count}}</span>
-                    @endif
-                </a>
-                <a href="/teachers/{{$exam->id}}" class="btn btn-success">Manage Teachers</a>
-                <a href="/mail/{{$exam->id}}" class="btn btn-warning">Manage Mails</a>
-            </div>
+<div class="page-narrow">
+    <div class="toolbar">
+        <div class="page-head mb-0">
+            <h1>Exams</h1>
+            <p>Open an exam to manage its students, schedule, notices, teachers and mail.</p>
         </div>
+        <a class="btn btn-primary" href="/exams/0"><i class="bi bi-plus-lg"></i> New exam</a>
     </div>
-    <br>
-    <br>
+
+    @if($exams && $exams->count() > 0) 
+    @php
+        $today = date('Y-m-d');
+        $groups = [
+            'Open for registration' => $exams->filter(function($exam) use ($today) { return $exam->deadline >= $today; }),
+            'Closed' => $exams->filter(function($exam) use ($today) { return $exam->deadline < $today; }),
+        ];
+    @endphp
+    @foreach($groups as $groupTitle => $groupExams)
+    @if($groupExams->count() > 0)
+    <h2 class="exam-group-title">{{ $groupTitle }}</h2>
+    @foreach($groupExams as $exam)
+    @php
+        $deadline = \Carbon\Carbon::parse($exam->deadline);
+        $open = $exam->deadline >= $today;
+    @endphp
+    <article class="exam-slip {{ $open ? '' : 'is-closed' }}">
+        <div class="exam-date">
+            <span class="exam-date-label">{{ $open ? 'Closes' : 'Closed' }}</span>
+            <span class="exam-date-day">{{ $deadline->format('j') }}</span>
+            <span class="exam-date-month">{{ $deadline->format('M Y') }}</span>
+        </div>
+        <div class="exam-body d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h3 class="exam-title"><a href="/students/{{$exam->id}}">{{$exam->exam_name}}</a></h3>
+                <p class="exam-meta">{{$exam->department}}, series {{$exam->series}}</p>
+                <p class="exam-meta num">
+                    {{$exam->student_count}} registered, {{$exam->verified_count}} verified.
+                    @if($exam->notice_count > 0)
+                        {{$exam->notice_count}} {{ $exam->notice_count == 1 ? 'notice' : 'notices' }} ({{$exam->active_notice_count}} active).
+                    @endif
+                </p>
+            </div>
+            <a href="/students/{{$exam->id}}" class="btn btn-quiet">Manage <i class="bi bi-chevron-right"></i></a>
+        </div>
+    </article>
+    @endforeach
+    @endif
     @endforeach
     @else
-    <h2>No exams found.</h2>
-    <a class="btn btn-success btn-lg" href="/exams/0">Create New Exam</a>
+    <div class="empty-state">
+        <h2>No exams yet</h2>
+        <p>Create the first exam to open registration for students.</p>
+        <a class="btn btn-primary" href="/exams/0"><i class="bi bi-plus-lg"></i> New exam</a>
+    </div>
     @endif
-    
-    
+</div>
 @stop

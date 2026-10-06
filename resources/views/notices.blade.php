@@ -1,105 +1,74 @@
-@extends('layouts.master')
+@extends('layouts.exam')
  
 @section('title', 'Notices')
+@section('tab', 'notices')
  
-@section('content')
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Notices for {{$exam->exam_name}}</h2>
-    <a href="/notices/{{$exam->id}}/create" class="btn btn-success">Add New Notice</a>
-</div>
-
-@if (session('success'))
-    <div class="alert alert-success">{{ session('success') }}</div>
-@endif
-@if (session('error'))
-    <div class="alert alert-danger">{{ session('error') }}</div>
-@endif
-
-<div class="row mb-3">
-    <div class="col-md-12">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Exam Information</h5>
-                <div class="row">
-                    <div class="col-lg-4 col-md-6 mb-2">
-                        <strong>Department:</strong><br>
-                        <span class="text-muted">{{$exam->department}}</span>
-                    </div>
-                    <div class="col-lg-2 col-md-3 col-6 mb-2">
-                        <strong>Series:</strong><br>
-                        <span class="text-muted">{{$exam->series}}</span>
-                    </div>
-                    <div class="col-lg-3 col-md-3 col-6 mb-2">
-                        <strong>Deadline:</strong><br>
-                        <span class="text-muted">{{$exam->deadline}}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+@section('exam-content')
+@php
+    $visibleCount = $notices->where('is_active', true)->count();
+@endphp
+<div class="toolbar">
+    <span class="toolbar-note num">
+        @if(count($notices) > 0)
+            {{count($notices)}} {{ count($notices) == 1 ? 'notice' : 'notices' }}, {{$visibleCount}} visible to students
+        @endif
+    </span>
+    <a href="/notices/{{$exam->id}}/create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New notice</a>
 </div>
 
 @if(count($notices) > 0)
-    <div class="row">
         @foreach($notices as $notice)
-        <div class="col-md-12 mb-3">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 text-primary">{{$notice->title}}</h5>
-                    <div>
-                        @if($notice->is_active)
-                            <span class="badge badge-success">Active</span>
-                        @else
-                            <span class="badge badge-secondary">Inactive</span>
+        <article class="panel notice-item">
+            <div class="d-flex flex-wrap justify-content-between align-items-start gap-2">
+                <div>
+                    <h3>{{$notice->title}}</h3>
+                    <p class="notice-date">
+                        Created {{$notice->created_at->format('j M Y, g:i A')}}
+                        @if($notice->updated_at != $notice->created_at)
+                            (updated {{$notice->updated_at->format('j M Y, g:i A')}})
                         @endif
-                        <a href="/notices/{{$exam->id}}/edit/{{$notice->id}}" class="btn btn-sm btn-primary ml-2">Edit</a>
-                        <form action="/notices" method="POST" style="display: inline;" onsubmit="return confirm('Are you sure you want to delete this notice?')">
-                            @csrf
-                            <input type="hidden" name="notice_id" value="{{$notice->id}}">
-                            <input type="hidden" name="exam_id" value="{{$exam->id}}">
-                            <button type="submit" name="submit" value="delete" class="btn btn-sm btn-danger ml-1">Delete</button>
-                        </form>
-                    </div>
+                    </p>
                 </div>
-                <div class="card-body">
-                    <p class="card-text">{!! nl2br(strip_tags($notice->content, '<b><i><br>')) !!}</p>
-                    
-                    @if($notice->file_name)
-                        <div class="alert alert-light border-left-primary mt-3">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-paperclip text-primary mr-2"></i>
-                                <div>
-                                    <strong>Attachment:</strong>
-                                    <a href="/notice-file/{{$notice->id}}" target="_blank" class="text-primary ml-1">
-                                        {{$notice->file_name}}
-                                    </a>
-                                    <small class="text-muted d-block">
-                                        {{ strtoupper(pathinfo($notice->file_name, PATHINFO_EXTENSION)) }} • 
-                                        {{ number_format($notice->file_size / 1024, 1) }} KB
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
+                <div class="toolbar-group">
+                    @if($notice->is_active)
+                        <span class="status status-success">Visible to students</span>
+                    @else
+                        <span class="status status-neutral">Hidden</span>
                     @endif
-                    
-                    <small class="text-muted">Created: {{$notice->created_at->format('d M Y, h:i A')}}</small>
-                    @if($notice->updated_at != $notice->created_at)
-                        <small class="text-muted"> | Updated: {{$notice->updated_at->format('d M Y, h:i A')}}</small>
-                    @endif
+                    <a href="/notices/{{$exam->id}}/edit/{{$notice->id}}" class="btn-icon" title="Edit notice" aria-label="Edit notice"><i class="bi bi-pencil"></i></a>
+                    <form action="/notices" method="POST" class="d-inline"
+                          data-confirm="Students will no longer see this notice or its attachment. This cannot be undone."
+                          data-confirm-title="Delete this notice?"
+                          data-confirm-button="Delete notice">
+                        @csrf
+                        <input type="hidden" name="notice_id" value="{{$notice->id}}">
+                        <input type="hidden" name="exam_id" value="{{$exam->id}}">
+                        <button type="submit" name="submit" value="delete" class="btn-icon is-danger" title="Delete notice" aria-label="Delete notice"><i class="bi bi-trash"></i></button>
+                    </form>
                 </div>
             </div>
-        </div>
+            <div class="notice-content">{!! nl2br(strip_tags($notice->content, '<b><i><br>')) !!}</div>
+
+            @if($notice->file_name)
+                <a href="/notice-file/{{$notice->id}}" target="_blank" class="file-chip">
+                    <i class="bi bi-paperclip"></i>
+                    <span>
+                        {{$notice->file_name}}
+                        <small class="d-block">
+                            {{ strtoupper(pathinfo($notice->file_name, PATHINFO_EXTENSION)) }} file,
+                            {{ number_format($notice->file_size / 1024, 1) }} KB
+                        </small>
+                    </span>
+                </a>
+            @endif
+        </article>
         @endforeach
-    </div>
 @else
-    <div class="alert alert-info">
-        <h4>No notices found</h4>
-        <p>No notices have been created for this exam yet. <a href="/notices/{{$exam->id}}/create">Create the first notice</a>.</p>
+    <div class="empty-state">
+        <h2>No notices yet</h2>
+        <p>Post a notice to tell students about dates, rooms or changes for this exam.</p>
+        <a href="/notices/{{$exam->id}}/create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New notice</a>
     </div>
 @endif
-
-<div class="mt-4">
-    <a href="/admin" class="btn btn-secondary">Back to Admin Panel</a>
-</div>
 
 @endsection

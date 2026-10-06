@@ -147,12 +147,20 @@ class HomeController extends Controller
             $data["course5"] = $course5;
         }    
         $std = RegisteredStudent::all()->where('examid','=',$examid)->where('roll','=',$roll)->first();
+
+        // Shown on the home page until the student leaves it, so the download link does not vanish with the toast
+        $application = ['exam' => $exam->exam_name, 'url' => '/download/'.$examid.'/'.$roll];
+
         if($std) {
-            return redirect('/')->with('error', 'You have already registered for this exam. To download your application again, <a href="/download/'.$examid.'/'.$roll.'" class="alert-link">click here</a>.');
+            return redirect('/')
+                ->with('error', 'You have already registered for this exam.')
+                ->with('application', $application + ['already' => true]);
         }
         
         RegisteredStudent::insert($data);
-        return redirect('/')->with('success', 'Registration successful! Your application has been submitted. <a href="/download/'.$examid.'/'.$roll.'" class="alert-link">Download your application form</a>.');
+        return redirect('/')
+            ->with('success', 'Registration submitted.')
+            ->with('application', $application + ['already' => false]);
         
     }
     public function download(Request $req, $examid, $roll)
@@ -201,7 +209,7 @@ class HomeController extends Controller
             session(['name'=>$user->name]);
             return redirect('/admin');
         }
-        return view('login');
+        return view('login')->with(['loginFailed' => true, 'email' => $email]);
     }
     public function admin()
     {
@@ -213,6 +221,10 @@ class HomeController extends Controller
             $exam->active_notice_count = Notice::where('exam_id', $exam->id)
                                                ->where('is_active', true)
                                                ->count();
+            $exam->student_count = RegisteredStudent::where('examid', $exam->id)->count();
+            $exam->verified_count = RegisteredStudent::where('examid', $exam->id)
+                                                     ->where('verified', true)
+                                                     ->count();
         }
         
         return view('admin')->with('exams', $exams);
@@ -236,17 +248,31 @@ class HomeController extends Controller
             return view('exam')->with(['new'=>true, 
                                         'exam'=>$exam,
                                         'courses'=>$courses,
-                                        'selected'=>[]
+                                        'selected'=>[],
+                                        'registeredCounts'=>[]
                                     ]);
         }
             
         else {
             $exam = AvailableExam::all()->where('id','=',$id)->first();
             $selectedCourses = CourseExamMapping::all()->where('examid','=',$id)->pluck('courseid');
+
+            // How many students in this exam registered for each course, shown beside the course list
+            $registeredCounts = [];
+            foreach(RegisteredStudent::where('examid', $id)->get() as $student)
+            {
+                foreach(['course1', 'course2', 'course3', 'course4', 'course5'] as $field)
+                {
+                    if($student->$field)
+                        $registeredCounts[$student->$field] = ($registeredCounts[$student->$field] ?? 0) + 1;
+                }
+            }
+
             return view('exam')->with(['new'=>false, 
                                         'exam'=>$exam, 
                                         'courses'=>$courses,
-                                        'selected'=>$selectedCourses]
+                                        'selected'=>$selectedCourses,
+                                        'registeredCounts'=>$registeredCounts]
                                     );
         }
     }
@@ -273,7 +299,7 @@ class HomeController extends Controller
             
             CourseExamMapping::where('examid','=',$examid)->delete();
             
-            foreach($selected as $course)
+            foreach($selected ?? [] as $course)
             {
                 $obj = new CourseExamMapping;
                 $obj->examid = $examid;
@@ -293,7 +319,7 @@ class HomeController extends Controller
             $exam->save();
             $examid = $exam->id;
             
-            foreach($selected as $course)
+            foreach($selected ?? [] as $course)
             {
                 $obj = new CourseExamMapping;
                 $obj->examid = $examid;

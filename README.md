@@ -5,7 +5,7 @@ A comprehensive web application built with Laravel for managing backlog exam reg
 ![Laravel](https://img.shields.io/badge/Laravel-9.x-red?style=flat-square&logo=laravel)
 ![PHP](https://img.shields.io/badge/PHP-8.0+-blue?style=flat-square&logo=php)
 ![SQLite](https://img.shields.io/badge/Database-SQLite-lightgrey?style=flat-square&logo=sqlite)
-![Bootstrap](https://img.shields.io/badge/UI-Bootstrap_4-purple?style=flat-square&logo=bootstrap)
+![Bootstrap](https://img.shields.io/badge/UI-Bootstrap_5-purple?style=flat-square&logo=bootstrap)
 
 ## 📋 Table of Contents
 

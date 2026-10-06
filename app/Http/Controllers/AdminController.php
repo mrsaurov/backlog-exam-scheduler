@@ -34,38 +34,57 @@ class AdminController extends Controller
         // Get only courses that are mapped to this specific exam
         $examCourseIds = CourseExamMapping::where('examid', $id)->pluck('courseid')->toArray();
         $courses = Course::whereIn('id', $examCourseIds)->get();
-        $coursesArray = $courses->toArray();
+
+        // A student may be registered for a course that was later removed from this exam,
+        // or deleted altogether. Those registrations still have to be listed.
+        $courseFields = ['course1', 'course2', 'course3', 'course4', 'course5'];
+        $registeredCourseIds = [];
+        foreach($students as $std)
+        {
+            foreach($courseFields as $field)
+            {
+                if($std[$field] && $std[$field]>0)
+                    $registeredCourseIds[] = $std[$field];
+            }
+        }
+        $removedCourses = Course::whereIn('id', array_diff(array_unique($registeredCourseIds), $examCourseIds))
+            ->orderBy('course_code')
+            ->get();
+
+        $offered = array_flip($examCourseIds);
         $coursemap = [];
-        foreach($coursesArray as $crs)
+        foreach($courses->concat($removedCourses) as $crs)
         {
             // Use only course_code for table display
-            $coursemap[$crs['id']] = $crs['course_code'];
+            $coursemap[$crs->id] = $crs->course_code;
         }
         $stds = [];
         foreach($students as $std)
         {
-            // Store original course IDs for the edit modal
-            $std['course1_id'] = $std['course1'];
-            $std['course2_id'] = $std['course2'];
-            $std['course3_id'] = $std['course3'];
-            $std['course4_id'] = $std['course4'];
-            $std['course5_id'] = $std['course5'];
-            
-            // Convert to course codes with titles for display
-            if($std['course1'] && $std['course1']>0) 
-                $std['course1'] = $coursemap[$std['course1']];
+            // offered | removed (no longer offered in this exam) | deleted (course no longer exists)
+            $std['course_states'] = [];
 
-            if($std['course2'] && $std['course2']>0) 
-                $std['course2'] = $coursemap[$std['course2']];
+            foreach($courseFields as $field)
+            {
+                // Store original course IDs for the edit modal
+                $courseId = $std[$field];
+                $std[$field.'_id'] = $courseId;
 
-            if($std['course3'] && $std['course3']>0) 
-                $std['course3'] = $coursemap[$std['course3']];
-
-            if($std['course4'] && $std['course4']>0) 
-                $std['course4'] = $coursemap[$std['course4']];
-
-            if($std['course5'] && $std['course5']>0) 
-                $std['course5'] = $coursemap[$std['course5']];
+                // Convert to course codes for display
+                if($courseId && $courseId>0)
+                {
+                    if(!isset($coursemap[$courseId]))
+                    {
+                        $std[$field] = 'Deleted course';
+                        $std['course_states'][$field] = 'deleted';
+                    }
+                    else
+                    {
+                        $std[$field] = $coursemap[$courseId];
+                        $std['course_states'][$field] = isset($offered[$courseId]) ? 'offered' : 'removed';
+                    }
+                }
+            }
             
             array_push($stds,$std);
         }
@@ -73,6 +92,7 @@ class AdminController extends Controller
                                         'students'=>$stds, 
                                         'exam'=>$exam,
                                         'courses'=>$courses,
+                                        'removedCourses'=>$removedCourses,
                                         'currentSort'=>$sortBy
                                     ]);
     }
@@ -323,8 +343,8 @@ class AdminController extends Controller
         foreach($allCoursesCount as $courseId => $count) {
             $sortedAllCoursesData[] = [
                 'course_id' => $courseId,
-                'course_code' => $allCoursemap[$courseId],
-                'course_title' => $allCourseTitles[$courseId],
+                'course_code' => $allCoursemap[$courseId] ?? 'Deleted course',
+                'course_title' => $allCourseTitles[$courseId] ?? '',
                 'count' => $count,
                 'students' => $allCourseStudents[$courseId]
             ];
@@ -348,7 +368,8 @@ class AdminController extends Controller
             'allCourseStudents'=>$allCourseStudents,
             'allCourseTitles'=>$allCourseTitles,
             'sortedAllCoursesData'=>$sortedAllCoursesData,
-            'examid'=>$examid
+            'examid'=>$examid,
+            'exam'=>AvailableExam::findOrFail($examid)
         ]);
     }
     
@@ -684,6 +705,19 @@ class AdminController extends Controller
         return response()->stream($callback, 200, $headers);
     }
     
+    /**
+     * Number of student registrations (in any exam) that include a course
+     */
+    private function courseRegistrationCount($courseId)
+    {
+        return RegisteredStudent::where('course1', $courseId)
+            ->orWhere('course2', $courseId)
+            ->orWhere('course3', $courseId)
+            ->orWhere('course4', $courseId)
+            ->orWhere('course5', $courseId)
+            ->count();
+    }
+
     public function course($courseid, $examid)
     {
         if($courseid == 0)
@@ -696,7 +730,9 @@ class AdminController extends Controller
             $course->year = "";
             return view('course')->with([
                                     'course'=>$course,
-                                    'examid'=>$examid
+                                    'examid'=>$examid,
+                                    'exam'=>AvailableExam::find($examid),
+                                    'registrationCount'=>0
                                 ]);
         
         }
@@ -704,7 +740,9 @@ class AdminController extends Controller
             $course = Course::all()->where('id', '=', $courseid)->first();
             return view('course')->with([
                                     'course'=>$course,
-                                    'examid'=>$examid
+                                    'examid'=>$examid,
+                                    'exam'=>AvailableExam::find($examid),
+                                    'registrationCount'=>$this->courseRegistrationCount($courseid)
                                 ]);
         }
             
@@ -747,6 +785,14 @@ class AdminController extends Controller
         }
         else if($operation == 'delete')
         {
+            // Registrations store the course ID, so a course that students registered for must stay
+            $registrationCount = $this->courseRegistrationCount($id);
+            if($registrationCount > 0)
+            {
+                flash()->addError('This course cannot be deleted because ' . $registrationCount . ' student registration(s) include it.');
+                return redirect('/courses/'.$id.'/'.$examid);
+            }
+
             $res = Course::where('id','=', $id)->delete();
             if($res)
                 flash()->addSuccess('Course deleted successfully');
