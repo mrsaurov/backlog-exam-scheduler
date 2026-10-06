@@ -80,13 +80,25 @@ Commit**. Do not run migrations from the staging clone, which does not contain
 the production `.env`. If a migration fails, inspect the cPanel deployment output
 and resolve the failure before treating the release as complete.
 
-The staging clone has an earlier local `.cpanel.yml` change that only clears
-caches. The migration task added in the development repository is not active
-on cPanel until this configuration is committed, pushed to GitHub and pulled
-into the cPanel-managed clone. Reconcile the clone's earlier local change when
-pulling the committed configuration; deployment requires a clean working tree.
-The clone's uncommitted change may currently disable its Deploy button. This
-does not prevent the live application from running.
+The deployment configuration is committed and active in the cPanel-managed
+clone. Its earlier local configuration edit was reconciled before pulling;
+keep this checkout clean so the Deploy button remains available.
+
+## Deployment verification (2026-10-07)
+
+Commit `4241ed2` was pushed to GitHub, pulled through **Update from Remote**, and
+run through **Deploy HEAD Commit**. A fresh MySQL backup was downloaded and
+verified before deployment. The pending
+`2026_10_06_100000_create_mail_logs_table.php` migration was copied from the
+checkout into the running application's `database/migrations` directory.
+
+cPanel recorded the deployed commit. A second MySQL backup confirmed that
+`mail_logs` was created and the migration was recorded; existing application
+data was unchanged. The homepage and login form continued to load. This test
+published the migration only; the UI and mail-controller changes in the Git
+checkout still require copying into the running app for a full application
+release. Database schema and deployed application code should be checked
+separately when assessing release status.
 
 ## Reorganization and recovery
 
