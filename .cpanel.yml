@@ -1,10 +1,5 @@
 ---
 deployment:
   tasks:
-    # Code is copied manually from the clone into this app directory.
-    # These tasks migrate the deployed app and clear caches; they do not copy code.
-    # Copy the release (including migrations) and back up production MySQL first.
-    - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan config:clear
-    - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan migrate --force --no-interaction
-    - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan route:clear
-    - /usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan view:clear
+    # Publishes code/assets, backs up the database, migrates, checks and reopens the site.
+    - /usr/local/bin/ea-php83 /home/servicescserueta/repositories/backlog-exam-scheduler/scripts/cpanel-deploy.php

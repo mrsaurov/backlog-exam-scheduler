@@ -1,4 +1,4 @@
-# cPanel layout and manual deployment
+# cPanel deployment and recovery
 
 The backlog scheduler at `https://services.cse.ruet.ac.bd` uses this layout:
 
@@ -14,12 +14,13 @@ The backlog scheduler at `https://services.cse.ruet.ac.bd` uses this layout:
     images/, js/, css/, build/            Published static assets, when present
     alumni/                              Existing separate website
     remuneration.services.cse.ruet.ac.bd/ Existing separate application
-  repositories/backlog-exam-scheduler/    Optional Git clone; not the running application
+  repositories/backlog-exam-scheduler/    cPanel-managed source checkout; not the running app
   backups/backlog-reorganization-2026-10-06/
     legacy-root/                         Original app and removed development files
     web/                                 Original public_html entry point and .htaccess
     home.htaccess                        Original account-level .htaccess
-  maintenance/                           Private migration script, state and logs
+  backups/backlog-deployments/            Per-release app, asset and database backups
+  maintenance/                           Private deployment/reorganization state and logs
   mail/, etc/, ssl/, tmp/, logs/          Hosting-managed directories
 ```
 
@@ -30,59 +31,97 @@ controller writes and reads `public_path('uploads/notices/...')`. Those notices
 continue to be delivered by `/notice-file/{noticeid}`. Do not copy this uploads
 directory into `public_html` or introduce a symlink that makes it directly public.
 
-## Updating the application manually
+## Full deployment through cPanel
 
-1. Back up the home directory and `servicescserueta_backlog` MySQL database using
-   cPanel Backup. Keep `.env`, uploads and private attachments out of Git.
-2. Clone or pull the selected commit in `repositories/backlog-exam-scheduler`.
-   This is optional staging space; the site does not load code from it.
-3. During a short maintenance interval, copy the app's code into
-   `apps/backlog-scheduler`. Preserve the production `.env`, `storage`,
-   `public/uploads`, and runtime bootstrap caches until explicitly cleared.
-   Keep `vendor` unless dependencies are being deliberately updated using
-   `composer.lock` and the production PHP version. Do not copy `.git`,
-   `node_modules`, `.DS_Store`, tests, sample files or old archives into production.
-4. Publish static assets from the clone's `public/images`, `public/js`,
-   `public/css`, and `public/build` into the matching directories in `public_html`.
-   Preserve `public_html/index.php` and the cPanel PHP handler in `.htaccess`.
-   The repository's normal `public/index.php` assumes a different relative path:
-   copying it over the deployed entry point will break the website.
-   Never replace all of `public_html`; it also contains the alumni website and
-   remuneration application.
-5. After the release's code and migration files are in `apps/backlog-scheduler`,
-   confirm the MySQL backup, then use **Deploy HEAD Commit** in cPanel's Git
-   Version Control to run the committed `.cpanel.yml` tasks. These clear the
-   configuration cache, run `migrate --force --no-interaction`, then clear route
-   and view caches. Terminal access is not required. Laravel applies only pending
-   migrations; it does not re-run already recorded migrations. The unused legacy
-   SQLite file is not a backup of the production MySQL database.
-6. If maintenance mode was enabled, leave it through the hosting provider's
-   supported execution facility, then check the homepage, login, an exam page
-   and a notice download. The current deployment tasks do not enter or leave
-   maintenance mode.
+1. Commit the release, including migration files and public assets, and push it
+   to GitHub. Keep `.env`, uploads, database dumps and runtime storage out of Git.
+2. Open **Git Version Control → Manage → Pull or Deploy** for
+   `repositories/backlog-exam-scheduler` and click **Update from Remote**.
+3. Confirm the intended HEAD commit, then click **Deploy HEAD Commit**. Normal
+   releases need no terminal, manual file copying or temporary cron jobs.
+4. Wait for completion, then check the homepage, login, an exam page and notice
+   attachment. Inspect the private deployment state and log if anything fails;
+   cPanel's last-deployed SHA alone does not prove every task succeeded.
 
-The production CLI commands use PHP 8.3, matching the domain's cPanel handler:
+The committed `.cpanel.yml` runs one command with the domain's PHP 8.3 CLI:
 
 ```sh
-/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan down --retry=60
-/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan config:clear
-/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan migrate --force --no-interaction
-/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan route:clear
-/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan view:clear
-/usr/local/bin/ea-php83 /home/servicescserueta/apps/backlog-scheduler/artisan up
+/usr/local/bin/ea-php83 /home/servicescserueta/repositories/backlog-exam-scheduler/scripts/cpanel-deploy.php
 ```
 
-The repository's `.cpanel.yml` runs migrations and clears caches in the correct
-application directory. It does not clone or publish files, install dependencies,
-or manage maintenance mode. **Update from Remote** updates only the staging
-clone; copy the release into the running app before clicking **Deploy HEAD
-Commit**. Do not run migrations from the staging clone, which does not contain
-the production `.env`. If a migration fails, inspect the cPanel deployment output
-and resolve the failure before treating the release as complete.
+### What the script does
 
-The deployment configuration is committed and active in the cPanel-managed
-clone. Its earlier local configuration edit was reconciled before pulling;
-keep this checkout clean so the Deploy button remains available.
+- Locks deployment and checks the clean Git checkout, production prerequisites,
+  and customized web entry point. Refuses pre-existing maintenance mode or an
+  unresolved interrupted deployment.
+- Prepares tracked runtime code and assets in a private staging directory. Keeps
+  production `.env`, sessions, storage and notice uploads. Excludes Git metadata,
+  tests, development scripts, sample files and local database files.
+- Copies existing dependencies into the candidate. When Composer is available,
+  runs `install --no-dev --prefer-dist --no-interaction --optimize-autoloader`
+  and `check-platform-reqs --no-dev`. Uses `composer.lock`, never `composer update`.
+  If Composer is unavailable, reuses dependencies only with an unchanged lockfile;
+  otherwise stops before touching production. Supported locations include
+  `/opt/cpanel/composer/bin/composer` and `maintenance/composer.phar`.
+- Checks the database connection and counts pending migrations. Creates a private
+  MySQL schema/data gzip backup using a consistent transaction, then reads it back
+  before proceeding. The built-in backup supports InnoDB tables without views or
+  triggers; unsupported schemas stop deployment. SQLite snapshots support tests.
+- Backs up managed web assets, enters maintenance mode, refreshes mutable data,
+  archives the old application and activates the candidate at the existing path.
+- Publishes tracked static assets into `public_html`, retaining their copies in
+  the app's `public/` directory for asset versioning. Removes obsolete assets only
+  when recorded in the previous deployment manifest. Preserves the customized
+  `index.php`, `.htaccess`, other websites and hosting directories. Never publishes
+  uploads or storage; rejects executable PHP assets and symlink destinations.
+- Runs `migrate --force --no-interaction`, clears configuration/route/view caches,
+  and discovers packages. Checks HTTP responses inside Laravel for the homepage,
+  login and latest exam's notices using a private maintenance bypass. Records the
+  release manifest, leaves maintenance mode and records completion. The browser
+  check additionally verifies the actual web server and public asset URLs.
+
+There is no frontend build step today: views load committed `public/css` and
+`public/js` files. If Vite output becomes part of the UI, prepare the assets before
+deploying; this script publishes tracked `public/build` files but does not run npm.
+
+### Logs, backups and failure recovery
+
+Inspect these private paths using cPanel File Manager:
+
+- `maintenance/deployment.json`: latest status, commit, backup and log paths.
+- `maintenance/deployment-<release-id>.log`: command output and diagnostics.
+- `apps/backlog-scheduler/.deployment.json`: active release manifest.
+- `backups/backlog-deployments/<release-id>/application`: previous application.
+- `backups/backlog-deployments/<release-id>/database.sql.gz`: production MySQL backup.
+- `backups/backlog-deployments/<release-id>/assets` and `assets.json`: asset backups.
+
+Preparation failures leave the live app untouched. Failures after activation
+restore the previous code/assets and reopen the site when no pending migration
+could have changed the schema. If pending migrations have started, a failure
+leaves maintenance mode active with status `needs_recovery`. MySQL DDL can partially
+commit; the script does not blindly reverse database changes. Backups are retained
+without automatic deletion.
+
+For interrupted or schema-changing failures, inspect the log first. Recovery can
+use File Manager to archive the failed app and restore the previous application
+and assets, and cPanel Backup to restore the downloaded SQL gzip if needed.
+Preserve newer mutable data before restoring files. Confirm schema compatibility
+before removing `storage/framework/down` and marking deployment state `rolled_back`.
+New Deploy attempts remain blocked until recovery is acknowledged. Keep failed
+files and backups until verification is complete.
+
+Keep the cPanel checkout clean. Make deployment changes in the development
+repository and push through GitHub instead of editing `.cpanel.yml` on the server.
+
+### Local verification
+
+Run `python3 scripts/tests/test-cpanel-deploy.py` with local PHP and the existing
+`vendor` directory. It creates a disposable SQLite account layout and checks a
+full release, repeated deployment, code/asset rollback, migration failure,
+backups, runtime-data preservation and unrelated-site preservation. The fixture
+uses the script's optional `--reuse-vendor` argument because local PHP can be newer
+than the lockfile supports; this still rejects any lockfile change. Normal cPanel
+deployment does not pass this argument and uses available Composer on PHP 8.3.
 
 ## Deployment verification (2026-10-07)
 
@@ -94,11 +133,10 @@ checkout into the running application's `database/migrations` directory.
 
 cPanel recorded the deployed commit. A second MySQL backup confirmed that
 `mail_logs` was created and the migration was recorded; existing application
-data was unchanged. The homepage and login form continued to load. This test
-published the migration only; the UI and mail-controller changes in the Git
-checkout still require copying into the running app for a full application
-release. Database schema and deployed application code should be checked
-separately when assessing release status.
+data was unchanged. The homepage and login form continued to load. This earlier
+test published the migration only using the previous configuration. The full
+deployment script above replaces that workflow. Assess database schema and
+deployed application code separately when verifying a release.
 
 ## Reorganization and recovery
 

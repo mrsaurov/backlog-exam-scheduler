@@ -44,13 +44,13 @@ Paths below are relative to `/home/servicescserueta/`:
 | `backups/backlog-reorganization-2026-10-06/` | Archived original deployment and entry-point backups. |
 | `maintenance/` | Private reorganization script, logs and state. |
 
-- Deployment currently uses manual code copying. This repository's `.cpanel.yml` clears the configuration cache, runs `migrate --force --no-interaction` against the deployed app, then clears route and view caches. It does not copy code, install dependencies or publish assets. Use committed configuration in a clean cPanel checkout; copy the release, including its migrations, into the app directory before clicking Deploy. Full release automation still requires a deployment script. The migration task was tested on production on 2026-10-07; see the deployment document for the result.
-- Preserve the production `.env`, `storage`, `public/uploads` and existing dependencies unless deliberately updating them. Back up the production MySQL database before clicking Deploy HEAD Commit, because the new configuration applies pending migrations. A legacy SQLite file is not a production database backup.
+- `.cpanel.yml` runs `scripts/cpanel-deploy.php` for a full release. The workflow is Update from Remote, then Deploy HEAD Commit. The script prepares tracked code/dependencies, backs up MySQL and the previous release, preserves runtime data, publishes assets, runs migrations, clears caches, checks public pages and leaves maintenance mode. Use committed configuration in a clean checkout. See the deployment document for dependency requirements and recovery.
+- Preserve production `.env`, `storage` and `public/uploads`. The full deployment script backs up MySQL before applying pending migrations; inspect its backup and status when verifying a release. Additional cPanel backups remain useful before major schema changes. A legacy SQLite file is not a production database backup.
 - Publish public CSS, JavaScript, images and compiled assets into the matching `public_html` directories. The layout uses `public_path()` to version CSS and JavaScript, so update their copies in the deployed app's `public/` directory as well.
 - Preserve `public_html/index.php`: it loads Laravel from `../apps/backlog-scheduler/`. The repository's default `public/index.php` has different paths and must not overwrite it. Preserve cPanel's PHP handler in `.htaccess`.
 - Keep application code, `.env`, `vendor`, storage, Git metadata and backups outside the web root. Notice uploads stay at `apps/backlog-scheduler/public/uploads/notices` and are served by `/notice-file/{noticeid}`; do not publish them directly or symlink the whole app's `public/` directory into the web root.
 - Do not replace all of `public_html`; preserve its `alumni/` and `remuneration.services.cse.ruet.ac.bd/` directories and hosting-managed account folders.
-- `scripts/cpanel-reorganize.php` is a one-time layout migration, not a normal release deployment script.
+- `scripts/cpanel-reorganize.php` is a one-time layout migration. Normal releases use `scripts/cpanel-deploy.php`; do not rerun reorganization phases to deploy an update.
 
 ## Architecture
 
