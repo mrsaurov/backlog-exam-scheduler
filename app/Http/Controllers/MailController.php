@@ -129,6 +129,122 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
     }
 
     /**
+     * Teachers who receive a general mail, with the courses they receive it for.
+     *
+     * $audience is "both", "internal" (Teacher 1 of a course) or "external" (Teacher 2).
+     * Only courses with verified students in this exam count.
+     * Returns [teacher_id => ['teacher' => Teacher, 'courses' => Collection of Course]].
+     */
+    private function generalRecipients($examid, $audience)
+    {
+        $assignments = CourseTeacherAssignment::with(['teacher', 'course'])
+            ->where('exam_id', $examid)
+            ->whereIn('course_id', $this->activeCourseIds($examid))
+            ->orderBy('id')
+            ->get();
+
+        $recipients = [];
+        foreach ($assignments->groupBy('course_id') as $courseAssignments) {
+            // A course's first assignment is Teacher 1 (internal), the second Teacher 2 (external)
+            foreach ($courseAssignments->values() as $index => $assignment) {
+                $position = $index === 0 ? 'internal' : 'external';
+                if (($audience !== 'both' && $audience !== $position) || !$assignment->teacher || !$assignment->course) {
+                    continue;
+                }
+
+                $teacherId = $assignment->teacher_id;
+                if (!isset($recipients[$teacherId])) {
+                    $recipients[$teacherId] = ['teacher' => $assignment->teacher, 'courses' => collect()];
+                }
+                $recipients[$teacherId]['courses']->push($assignment->course);
+            }
+        }
+
+        // Alphabetical, so the tracker lists them in a predictable order
+        uasort($recipients, function ($a, $b) {
+            return strcmp($a['teacher']->name, $b['teacher']->name);
+        });
+
+        return $recipients;
+    }
+
+    /**
+     * Label for a general mail audience, shown in the tracker
+     */
+    private function audienceLabel($audience)
+    {
+        $labels = [
+            'internal' => 'Internal (Teacher 1) only',
+            'external' => 'External (Teacher 2) only',
+        ];
+
+        return $labels[$audience] ?? null;
+    }
+
+    /**
+     * The [Course List] block used in mail bodies
+     */
+    private function courseListHtml($courses)
+    {
+        return $courses->map(function ($course) {
+            return '<div style="margin-bottom: 8px;"><strong>' . e($course->course_code) . '</strong> – <strong>' . e($course->course_title) . '</strong></div>';
+        })->implode('');
+    }
+
+    /**
+     * Attachment limits the server will actually accept. PHP's upload settings can be
+     * lower than the 10 MB per file and 50 MB per mail that the form allows.
+     */
+    private function attachmentLimits()
+    {
+        $toBytes = function ($value) {
+            $value = trim((string) $value);
+            if ($value === '') {
+                return 0;
+            }
+            $number = (float) $value;
+            switch (strtolower(substr($value, -1))) {
+                case 'g': return (int) ($number * 1024 * 1024 * 1024);
+                case 'm': return (int) ($number * 1024 * 1024);
+                case 'k': return (int) ($number * 1024);
+                default: return (int) $number;
+            }
+        };
+
+        $perFile = 10 * 1024 * 1024;
+        $uploadMax = $toBytes(ini_get('upload_max_filesize'));
+        if ($uploadMax > 0) {
+            $perFile = min($perFile, $uploadMax);
+        }
+
+        $total = 50 * 1024 * 1024;
+        $postMax = $toBytes(ini_get('post_max_size'));
+        if ($postMax > 0) {
+            // Leave room for the subject and message in the same request
+            $total = min($total, max($postMax - 256 * 1024, 0));
+        }
+
+        $count = 10;
+        $maxUploads = (int) ini_get('max_file_uploads');
+        if ($maxUploads > 0) {
+            $count = min($count, $maxUploads);
+        }
+
+        $label = function ($bytes) {
+            $mb = $bytes / (1024 * 1024);
+            return ($mb >= 1 ? rtrim(rtrim(number_format($mb, 1), '0'), '.') . ' MB' : round($bytes / 1024) . ' KB');
+        };
+
+        return [
+            'file' => $perFile,
+            'total' => $total,
+            'count' => $count,
+            'fileLabel' => $label($perFile),
+            'totalLabel' => $label($total),
+        ];
+    }
+
+    /**
      * Send a mail and record the attempt in the mail tracker
      */
     private function sendAndLog($examid, $recipient, $mailType, $templateName, $subject, $content, $attachmentPaths = [], $resentFromId = null)
@@ -201,12 +317,20 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
         
         // Get predefined templates
         $predefinedTemplates = $this->getPredefinedTemplates();
+
+        // How many teachers a general mail would reach for each audience choice
+        $recipientCounts = [];
+        foreach (['both', 'internal', 'external'] as $audience) {
+            $recipientCounts[$audience] = count($this->generalRecipients($examid, $audience));
+        }
         
         return view('mail.index')->with([
             'exam' => $exam,
             'mailTemplates' => $mailTemplates,
             'courses' => $courses,
-            'predefinedTemplates' => $predefinedTemplates
+            'predefinedTemplates' => $predefinedTemplates,
+            'recipientCounts' => $recipientCounts,
+            'attachmentLimits' => $this->attachmentLimits()
         ]);
     }
 
@@ -363,19 +487,41 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
      */
     public function sendGeneral(Request $request, $examid)
     {
+        $limits = $this->attachmentLimits();
+        $usesDeadline = str_contains($request->input('subject', '') . $request->input('content', ''), '[Deadline Date]');
+
         $request->validate([
             'subject' => 'required|string|max:255',
             'content' => 'required|string',
-            'deadline' => 'nullable|date',
-            'attachments' => 'nullable|array|max:10',
-            'attachments.*' => 'file|max:10240|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,jpg,jpeg,png'
+            'deadline' => [$usesDeadline ? 'required' : 'nullable', 'date'],
+            'recipients' => 'nullable|in:both,internal,external',
+            'attachments' => 'nullable|array|max:' . $limits['count'],
+            'attachments.*' => 'file|max:' . intdiv($limits['file'], 1024) . '|mimes:pdf,doc,docx,xls,xlsx,ppt,pptx,txt,jpg,jpeg,png'
+        ], [
+            'deadline.required' => 'The mail uses [Deadline Date], so choose a deadline.',
+            'attachments.max' => 'Attach at most :max files.',
+            'attachments.*.uploaded' => 'An attachment could not be uploaded. Each file must be ' . $limits['fileLabel'] . ' or smaller.',
+            'attachments.*.max' => 'Each attachment must be ' . $limits['fileLabel'] . ' or smaller.',
+            'attachments.*.mimes' => 'Attachments must be PDF, Word, Excel, PowerPoint, text, JPG or PNG files.'
         ]);
+
+        $audience = $request->input('recipients') ?: 'both';
+        $attachmentPaths = [];
 
         try {
             $exam = AvailableExam::findOrFail($examid);
+
+            $recipients = $this->generalRecipients($examid, $audience);
+            if (count($recipients) === 0) {
+                $reasons = [
+                    'both' => 'no teacher is assigned to a course with verified students in this exam.',
+                    'internal' => 'no course with verified students in this exam has an internal teacher (Teacher 1).',
+                    'external' => 'no course with verified students in this exam has an external teacher (Teacher 2).',
+                ];
+                return redirect('/mail/' . $examid)->with('error', 'No email was sent: ' . $reasons[$audience]);
+            }
             
             // Handle file attachments
-            $attachmentPaths = [];
             if ($request->hasFile('attachments')) {
                 foreach ($request->file('attachments') as $file) {
                     $originalName = $file->getClientOriginalName();
@@ -389,31 +535,38 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                     ];
                 }
             }
-            
-            // Get all teachers assigned to courses with verified students in this exam
-            $activeCourseIds = $this->activeCourseIds($examid);
-            $teachers = Teacher::whereHas('courseAssignments', function($query) use ($examid, $activeCourseIds) {
-                $query->where('exam_id', $examid)
-                      ->whereIn('course_id', $activeCourseIds);
-            })->get();
 
+            $deadline = $request->deadline ? date('F j, Y', strtotime($request->deadline)) : null;
             $sentCount = 0;
             $failedCount = 0;
             
-            foreach ($teachers as $teacher) {
-                // Personalize the subject
-                $personalizedSubject = str_replace('[Exam Name]', $exam->exam_name, $request->subject);
-                
-                $personalizedContent = str_replace('[Teacher\'s Name]', $teacher->name, $request->content);
-                $personalizedContent = str_replace('[Exam Name]', $exam->exam_name, $personalizedContent);
-                if ($request->deadline) {
-                    $formattedDeadline = '<strong>' . date('F j, Y', strtotime($request->deadline)) . '</strong>';
-                    $personalizedContent = str_replace('<strong>[Deadline Date]</strong>', $formattedDeadline, $personalizedContent);
-                    $personalizedContent = str_replace('[Deadline Date]', $formattedDeadline, $personalizedContent);
+            foreach ($recipients as $entry) {
+                $teacher = $entry['teacher'];
+
+                // Personalize the subject (plain text)
+                $subjectReplacements = [
+                    '[Teacher\'s Name]' => $teacher->name,
+                    '[Exam Name]' => $exam->exam_name,
+                ];
+                if ($deadline) {
+                    $subjectReplacements['[Deadline Date]'] = $deadline;
                 }
+                $personalizedSubject = strtr($request->subject, $subjectReplacements);
+
+                // Personalize the content (HTML)
+                $personalizedContent = $request->content;
+                if ($deadline) {
+                    $personalizedContent = str_replace('<strong>[Deadline Date]</strong>', '[Deadline Date]', $personalizedContent);
+                }
+                $personalizedContent = strtr($personalizedContent, [
+                    '[Teacher\'s Name]' => e($teacher->name),
+                    '[Exam Name]' => e($exam->exam_name),
+                    '[Course List]' => $this->courseListHtml($entry['courses']),
+                    '[Deadline Date]' => $deadline ? '<strong>' . $deadline . '</strong>' : '[Deadline Date]',
+                ]);
                 
                 $recipient = ['teacher_id' => $teacher->id, 'name' => $teacher->name, 'email' => $teacher->email];
-                if ($this->sendAndLog($examid, $recipient, 'general', null, $personalizedSubject, $personalizedContent, $attachmentPaths)) {
+                if ($this->sendAndLog($examid, $recipient, 'general', $this->audienceLabel($audience), $personalizedSubject, $personalizedContent, $attachmentPaths)) {
                     $sentCount++;
                 } else {
                     $failedCount++;
@@ -427,22 +580,21 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                 }
             }
 
-            $message = "General mail sent successfully! Sent: {$sentCount}";
-            if ($failedCount > 0) {
-                $message .= ", Failed: {$failedCount}";
+            $teachers = function ($count) {
+                return $count . ' ' . ($count === 1 ? 'teacher' : 'teachers');
+            };
+            if ($failedCount === 0) {
+                return redirect('/mail/' . $examid)->with('success', 'General mail sent to ' . $teachers($sentCount) . '.');
             }
-            if (count($attachmentPaths) > 0) {
-                $message .= " (with " . count($attachmentPaths) . " attachment(s))";
+            if ($sentCount === 0) {
+                return redirect('/mail/' . $examid)->with('error', 'General mail could not be sent to any of the ' . $teachers($failedCount) . '. The Tracker shows the reason.');
             }
-            
-            return redirect('/mail/' . $examid)->with('success', $message);
+            return redirect('/mail/' . $examid)->with('warning', 'General mail sent to ' . $teachers($sentCount) . ', but failed for ' . $failedCount . '. The Tracker shows the reason.');
         } catch (Exception $e) {
             // Clean up any uploaded files in case of error
-            if (isset($attachmentPaths)) {
-                foreach ($attachmentPaths as $attachment) {
-                    if (file_exists($attachment['path'])) {
-                        unlink($attachment['path']);
-                    }
+            foreach ($attachmentPaths as $attachment) {
+                if (file_exists($attachment['path'])) {
+                    unlink($attachment['path']);
                 }
             }
             return redirect('/mail/' . $examid)->with('error', 'Error sending mail: ' . $e->getMessage());
@@ -469,7 +621,11 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
             $rules['deadline'] = 'nullable|date';
         }
         
-        $request->validate($rules);
+        $request->validate($rules, [
+            'template_type.required' => 'Choose a request.',
+            'courses.required' => 'Choose at least one course.',
+            'deadline.required' => 'Choose a deadline for this request.',
+        ]);
 
         try {
             $exam = AvailableExam::findOrFail($examid);
@@ -546,16 +702,17 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
                 }])->get();
             }
 
+            if ($teachers->isEmpty()) {
+                $who = in_array($request->template_type, $teacher1OnlyTemplates) ? 'an internal teacher (Teacher 1)' : 'a teacher';
+                return redirect('/mail/' . $examid)->with('error', 'No email was sent: none of the selected courses has ' . $who . ' assigned.');
+            }
+
             $sentCount = 0;
             $failedCount = 0;
             
             foreach ($teachers as $teacher) {
                 // Get courses assigned to this teacher
-                $teacherCourses = $teacher->courseAssignments->map(function($assignment) {
-                    return '<div style="margin-bottom: 8px;"><strong>' . $assignment->course->course_code . '</strong> – <strong>' . $assignment->course->course_title . '</strong></div>';
-                })->toArray();
-
-                $courseList = implode("", $teacherCourses);
+                $courseList = $this->courseListHtml($teacher->courseAssignments->pluck('course')->filter());
                 
                 // Personalize the subject
                 $personalizedSubject = str_replace('[Exam Name]', $exam->exam_name, $template['subject']);
@@ -578,12 +735,16 @@ Rajshahi University of Engineering & Technology (RUET)</p>'
             }
 
             $templateName = $template['name'];
-            $message = "'{$templateName}' mail sent successfully! Sent: {$sentCount}";
-            if ($failedCount > 0) {
-                $message .= ", Failed: {$failedCount}";
+            $teachersLabel = function ($count) {
+                return $count . ' ' . ($count === 1 ? 'teacher' : 'teachers');
+            };
+            if ($failedCount === 0) {
+                return redirect('/mail/' . $examid)->with('success', "'{$templateName}' sent to " . $teachersLabel($sentCount) . '.');
             }
-            
-            return redirect('/mail/' . $examid)->with('success', $message);
+            if ($sentCount === 0) {
+                return redirect('/mail/' . $examid)->with('error', "'{$templateName}' could not be sent to any of the " . $teachersLabel($failedCount) . '. The Tracker shows the reason.');
+            }
+            return redirect('/mail/' . $examid)->with('warning', "'{$templateName}' sent to " . $teachersLabel($sentCount) . ', but failed for ' . $failedCount . '. The Tracker shows the reason.');
         } catch (Exception $e) {
             return redirect('/mail/' . $examid)->with('error', 'Error sending customized mail: ' . $e->getMessage());
         }

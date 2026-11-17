@@ -943,6 +943,33 @@ label {
     box-shadow: var(--shadow);
 }
 
+/* Radio choices rendered as a segmented control */
+.segmented label {
+    margin: 0;
+    padding: .28rem .75rem;
+    border-radius: 7px;
+    color: var(--ink-soft);
+    font-size: .85rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.segmented label:hover {
+    color: var(--ink);
+}
+
+.segmented .btn-check:checked + label {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+}
+
+.segmented .btn-check:focus-visible + label {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
 .segmented .seg-count {
     margin-left: .3rem;
     color: var(--ink-faint);

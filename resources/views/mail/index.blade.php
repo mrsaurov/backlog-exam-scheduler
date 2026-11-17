@@ -9,7 +9,28 @@
     $savedGeneralTemplates = $mailTemplates->where('type', 'general')->keyBy('id')->map(function($template) {
         return ['subject' => $template->subject, 'content' => $template->content];
     });
+
+    // After a rejected send, reopen the dialog that was submitted, with its values and the reasons
+    $failedForm = $errors->any() ? old('form') : null;
+    $generalAudience = $failedForm === 'general' ? old('recipients', 'both') : 'both';
+    $oldCourses = $failedForm === 'customized' ? array_map('strval', (array) old('courses', [])) : [];
+    $audiences = [
+        'both' => 'Both teachers',
+        'internal' => 'Internal (Teacher 1)',
+        'external' => 'External (Teacher 2)',
+    ];
 @endphp
+
+@if($errors->any() && !in_array($failedForm, ['general', 'customized']))
+    <div class="alert alert-danger">
+        <strong>The mail was not sent.</strong>
+        <ul class="mb-0 mt-1">
+            @foreach ($errors->all() as $error)
+                <li>{{ $error }}</li>
+            @endforeach
+        </ul>
+    </div>
+@endif
 <div class="toolbar">
     <div class="segmented" aria-label="Mail views">
         <a href="/mail/{{$exam->id}}" class="is-active" aria-current="page">Send mail</a>
@@ -164,37 +185,59 @@
                 <h5 class="modal-title" id="generalMailModalLabel">Write general mail</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form method="POST" action="/mail/{{$exam->id}}/send-general" enctype="multipart/form-data">
+            <form method="POST" action="/mail/{{$exam->id}}/send-general" enctype="multipart/form-data" id="generalMailForm">
                 @csrf
+                <input type="hidden" name="form" value="general">
                 <div class="modal-body">
-                    <div class="callout mb-3">
-                        Goes to every teacher assigned to a course that has verified students in this exam.
+                    @if($failedForm === 'general')
+                        <div class="alert alert-danger" data-server-errors>
+                            <strong>The mail was not sent.</strong>
+                            <ul class="mb-0 mt-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                            <div class="mt-1">If you attached files, choose them again before sending.</div>
+                        </div>
+                    @endif
+
+                    <div class="mb-3">
+                        <span class="form-label d-block">Send to</span>
+                        <div class="segmented" role="radiogroup" aria-label="Send to">
+                            @foreach($audiences as $value => $label)
+                                <input type="radio" class="btn-check" name="recipients" id="recipients_{{$value}}" value="{{$value}}" {{ $generalAudience === $value ? 'checked' : '' }}>
+                                <label for="recipients_{{$value}}">{{$label}} <span class="seg-count">{{$recipientCounts[$value]}}</span></label>
+                            @endforeach
+                        </div>
+                        <div class="form-hint" id="generalRecipientNote"></div>
                     </div>
 
                     <div class="mb-3">
                         <label for="general_subject" class="form-label">Subject</label>
-                        <input type="text" class="form-control" id="general_subject" name="subject" maxlength="255" required>
+                        <input type="text" class="form-control" id="general_subject" name="subject" maxlength="255" value="{{ $failedForm === 'general' ? old('subject') : '' }}" required>
                     </div>
 
                     <div class="mb-3">
                         <label for="general_content" class="form-label">Message</label>
-                        <textarea class="form-control" id="general_content" name="content" rows="8" required></textarea>
+                        <textarea class="form-control" id="general_content" name="content" rows="8" required>{{ $failedForm === 'general' ? old('content') : '' }}</textarea>
                         <div class="form-hint">
-                            These are filled in for each teacher: <span class="tag">[Teacher's Name]</span> <span class="tag">[Exam Name]</span> <span class="tag">[Deadline Date]</span>.
+                            These are filled in for each teacher: <span class="tag">[Teacher's Name]</span> <span class="tag">[Exam Name]</span> <span class="tag">[Deadline Date]</span> <span class="tag">[Course List]</span>.
+                            The course list shows the courses the mail goes to that teacher for. Name, exam and deadline also work in the subject.
                             The message is sent as HTML, so wrap each paragraph in <span class="tag">&lt;p&gt;...&lt;/p&gt;</span>; plain line breaks are not kept.
                         </div>
                     </div>
 
                     <div class="row g-3">
                         <div class="col-md-5">
-                            <label for="general_deadline" class="form-label">Deadline <span class="optional">(optional)</span></label>
-                            <input type="date" class="form-control" id="general_deadline" name="deadline">
+                            <label for="general_deadline" class="form-label">Deadline <span class="optional" id="generalDeadlineOptional">(optional)</span></label>
+                            <input type="date" class="form-control" id="general_deadline" name="deadline" value="{{ $failedForm === 'general' ? old('deadline') : '' }}">
+                            <div class="form-hint">Needed when the subject or message uses [Deadline Date].</div>
                         </div>
                         <div class="col-md-7">
                             <label for="general_attachments" class="form-label">Attachments <span class="optional">(optional)</span></label>
                             <input type="file" class="form-control" id="general_attachments" name="attachments[]" multiple
                                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png">
-                            <div class="form-hint">PDF, Word, Excel, PowerPoint, text or images. Up to 10 files, 10 MB each.</div>
+                            <div class="form-hint">PDF, Word, Excel, PowerPoint, text, JPG or PNG. Up to {{$attachmentLimits['count']}} files, {{$attachmentLimits['fileLabel']}} each, {{$attachmentLimits['totalLabel']}} in total.</div>
                         </div>
                     </div>
                     <div id="general_attachment_preview" class="mt-2"></div>
@@ -221,14 +264,25 @@
             </div>
             <form method="POST" action="/mail/{{$exam->id}}/send-customized">
                 @csrf
+                <input type="hidden" name="form" value="customized">
                 <div class="modal-body">
+                    @if($failedForm === 'customized')
+                        <div class="alert alert-danger" data-server-errors>
+                            <strong>The mail was not sent.</strong>
+                            <ul class="mb-0 mt-1">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
                     <div class="row g-3 mb-3">
                         <div class="col-md-7">
                             <label for="template_type" class="form-label">Request</label>
                             <select class="form-select" id="template_type" name="template_type" required>
                                 <option value="">Choose a request</option>
                                 @foreach($predefinedTemplates as $key => $template)
-                                    <option value="{{$key}}">{{$template['name']}}</option>
+                                    <option value="{{$key}}" {{ $failedForm === 'customized' && old('template_type') === $key ? 'selected' : '' }}>{{$template['name']}}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -237,7 +291,7 @@
                                 Deadline
                                 <span class="optional deadline-optional">(optional)</span>
                             </label>
-                            <input type="date" class="form-control" id="customized_deadline" name="deadline">
+                            <input type="date" class="form-control" id="customized_deadline" name="deadline" value="{{ $failedForm === 'customized' ? old('deadline') : '' }}">
                         </div>
                     </div>
 
@@ -259,7 +313,7 @@
                             <div class="form-check">
                                 <input class="form-check-input course-checkbox" type="checkbox" name="courses[]"
                                        value="{{$course->id}}" id="course_{{$course->id}}"
-                                       data-course-code="{{$course->course_code}}">
+                                       data-course-code="{{$course->course_code}}" {{ in_array((string) $course->id, $oldCourses, true) ? 'checked' : '' }}>
                                 <label class="form-check-label" for="course_{{$course->id}}">
                                     <span class="fw-semibold num">{{$course->course_code}}</span> {{$course->course_title}}
                                 </label>
@@ -374,7 +428,7 @@
                 return;
             }
             $('#general_subject').val(saved.subject);
-            $('#general_content').val(saved.content);
+            $('#general_content').val(saved.content).trigger('input');
             generalModal.show();
         }
 
@@ -427,6 +481,50 @@
             showFormError('#customizedMailError', '');
         });
 
+        // ---- General mail ----
+        const recipientCounts = @json($recipientCounts);
+        const attachmentLimits = @json($attachmentLimits);
+        const allowedExtensions = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'jpg', 'jpeg', 'png'];
+        const audienceNotes = {
+            both: 'every teacher assigned to a course that has verified students in this exam',
+            internal: 'the internal teacher (Teacher 1) of each course that has verified students in this exam',
+            external: 'the external teacher (Teacher 2) of each course that has verified students in this exam'
+        };
+
+        function selectedAudience() {
+            return $('input[name="recipients"]:checked').val() || 'both';
+        }
+
+        function updateRecipientNote() {
+            const audience = selectedAudience();
+            const count = recipientCounts[audience] || 0;
+            const note = count === 0
+                ? 'Nobody matches this choice yet, so nothing can be sent. Assign teachers on the Teachers tab first.'
+                : 'Goes to ' + count + (count === 1 ? ' teacher: ' : ' teachers: ') + audienceNotes[audience] + '. Each teacher gets one email.';
+            $('#generalRecipientNote').text(note).toggleClass('text-danger', count === 0);
+            $('#generalSendButton').prop('disabled', count === 0);
+        }
+
+        $('input[name="recipients"]').on('change', updateRecipientNote);
+
+        function usesDeadline() {
+            return ($('#general_subject').val() + $('#general_content').val()).indexOf('[Deadline Date]') !== -1;
+        }
+
+        function updateDeadlineRequirement() {
+            const required = usesDeadline();
+            $('#general_deadline').prop('required', required);
+            $('#generalDeadlineOptional').prop('hidden', required);
+        }
+
+        $('#general_subject, #general_content').on('input', updateDeadlineRequirement);
+
+        function formatSize(bytes) {
+            return bytes >= 1024 * 1024
+                ? (bytes / 1024 / 1024).toFixed(bytes % (1024 * 1024) === 0 ? 0 : 1) + ' MB'
+                : Math.max(1, Math.round(bytes / 1024)) + ' KB';
+        }
+
         // Handle file attachments preview
         function resetAttachments(input) {
             input.value = '';
@@ -445,42 +543,89 @@
                 return;
             }
 
-            const maxFileSize = 10 * 1024 * 1024; // 10MB
-            const maxTotalSize = 50 * 1024 * 1024; // 50MB
-            let totalSize = 0;
+            if (files.length > attachmentLimits.count) {
+                showFormError('#generalMailError', `Attach at most ${attachmentLimits.count} files.`);
+                resetAttachments(this);
+                return;
+            }
 
+            let totalSize = 0;
             for (const file of files) {
                 totalSize += file.size;
+                const extension = file.name.split('.').pop().toLowerCase();
 
-                if (file.size > maxFileSize) {
-                    showFormError('#generalMailError', `File "${file.name}" is too large. Maximum file size is 10MB.`);
+                if (!allowedExtensions.includes(extension)) {
+                    showFormError('#generalMailError', `"${file.name}" cannot be attached. Use PDF, Word, Excel, PowerPoint, text, JPG or PNG files.`);
+                    resetAttachments(this);
+                    return;
+                }
+
+                if (file.size > attachmentLimits.file) {
+                    showFormError('#generalMailError', `"${file.name}" is ${formatSize(file.size)}. Each attachment must be ${attachmentLimits.fileLabel} or smaller.`);
                     resetAttachments(this);
                     return;
                 }
             }
 
-            if (totalSize > maxTotalSize) {
-                showFormError('#generalMailError', 'Total file size exceeds 50MB. Please reduce the number or size of files.');
+            if (totalSize > attachmentLimits.total) {
+                showFormError('#generalMailError', `These files add up to ${formatSize(totalSize)}. Together they must be ${attachmentLimits.totalLabel} or smaller.`);
                 resetAttachments(this);
                 return;
             }
 
             const list = $('<div class="tag-list"></div>');
             files.forEach(function(file) {
-                list.append($('<span class="tag"></span>').text(file.name + ' (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)'));
+                list.append($('<span class="tag"></span>').text(file.name + ' (' + formatSize(file.size) + ')'));
             });
             previewContainer.append(list);
 
             $('#generalSendButton span').text('Send mail with ' + files.length + (files.length === 1 ? ' attachment' : ' attachments'));
         });
 
-        // Reset general mail modal when closed
-        $('#generalMailModal').on('hidden.bs.modal', function() {
-            $(this).find('form')[0].reset();
-            $('#general_attachment_preview').empty();
-            $('#generalSendButton span').text('Send mail');
+        $('#generalMailForm').on('submit', function(e) {
             showFormError('#generalMailError', '');
+
+            if ((recipientCounts[selectedAudience()] || 0) === 0) {
+                e.preventDefault();
+                showFormError('#generalMailError', 'Nobody matches this choice, so nothing can be sent.');
+                return;
+            }
+
+            if (usesDeadline() && !$('#general_deadline').val()) {
+                e.preventDefault();
+                showFormError('#generalMailError', 'The mail uses [Deadline Date], so choose a deadline.');
+                $('#general_deadline').focus();
+            }
         });
+
+        // Clear the general mail dialog when it closes
+        $('#generalMailModal').on('hidden.bs.modal', function() {
+            $('#general_subject').val('');
+            $('#general_content').val('');
+            $('#general_deadline').val('');
+            $('#recipients_both').prop('checked', true);
+            resetAttachments(document.getElementById('general_attachments'));
+            $(this).find('[data-server-errors]').remove();
+            showFormError('#generalMailError', '');
+            updateRecipientNote();
+            updateDeadlineRequirement();
+        });
+
+        $('#customizedMailModal').on('hidden.bs.modal', function() {
+            $(this).find('[data-server-errors]').remove();
+        });
+
+        updateRecipientNote();
+        updateDeadlineRequirement();
+
+        // A send the server rejected: reopen that dialog with the reasons
+        const failedForm = @json($failedForm);
+        if (failedForm === 'general') {
+            generalModal.show();
+        } else if (failedForm === 'customized') {
+            $('#template_type').trigger('change');
+            customizedModal.show();
+        }
     });
 </script>
 @endsection
